@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가경국민체육센터 기계실 검침</title>
+<style>
+:root{
+  --bg:#f2f4f6; --surface:#ffffff; --surface2:#f8f9fb;
+  --ink:#1c2733; --ink2:#5b6b7b; --ink3:#8d99a6;
+  --line:#e2e7ec; --line2:#ced6dd;
+  --pipe-water:#1467c2; --pipe-water-bg:#eaf2fb;
+  --pipe-gas:#c78a00;  --pipe-gas-bg:#fdf5e0;
+  --pipe-steam:#c23b2e; --pipe-steam-bg:#fbeeec;
+  --pipe-chem:#1e8a4c; --pipe-chem-bg:#e9f6ee;
+  --pipe-elec:#6b4fbb; --pipe-elec-bg:#f1edfa;
+  --accent:#1c2733;
+  --ok:#1e8a4c; --warn:#c78a00; --danger:#c23b2e;
+  --radius:10px;
+  --num:'IBM Plex Mono','Consolas','Courier New',monospace;
+}
+[data-theme="dark"]{
+  --bg:#12181f; --surface:#1a222b; --surface2:#151c24;
+  --ink:#e8edf2; --ink2:#9fadba; --ink3:#6b7a89;
+  --line:#28323d; --line2:#334050;
+  --pipe-water:#5da3ea; --pipe-water-bg:#16283c;
+  --pipe-gas:#e6b64a;  --pipe-gas-bg:#332a12;
+  --pipe-steam:#e07a6e; --pipe-steam-bg:#361d1a;
+  --pipe-chem:#5cc98a; --pipe-chem-bg:#14301f;
+  --pipe-elec:#a68ee6; --pipe-elec-bg:#241c3a;
+  --accent:#e8edf2;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',-apple-system,sans-serif;
+  background:var(--bg); color:var(--ink); font-size:14px; line-height:1.5;
+}
+.num{font-family:var(--num); font-variant-numeric:tabular-nums}
+
+/* ── 로그인 ── */
+#login{
+  position:fixed; inset:0; z-index:100; background:var(--bg);
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+}
+.loginbox{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:30px 28px; width:min(92vw,360px)}
+.loginbox .mark{width:40px;height:40px;border-radius:10px;margin:0 auto 12px;
+  background:linear-gradient(180deg,var(--pipe-water) 0 25%,var(--pipe-gas) 25% 50%,var(--pipe-steam) 50% 75%,var(--pipe-chem) 75% 100%)}
+.loginbox h1{font-size:17px; text-align:center; margin-bottom:2px}
+.loginbox .sub{text-align:center; color:var(--ink3); font-size:12px; margin-bottom:18px}
+.workers{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px}
+.workers button{border:1px solid var(--line2); background:var(--surface2); color:var(--ink); font:inherit; font-weight:700; padding:11px 0; border-radius:9px; cursor:pointer}
+.workers button.sel{background:var(--accent); color:var(--bg); border-color:var(--accent)}
+#pin{width:100%; font:18px var(--num); text-align:center; letter-spacing:8px; border:1px solid var(--line2); background:var(--surface2); color:var(--ink); border-radius:9px; padding:11px}
+#loginBtn{width:100%; margin-top:12px}
+#loginMsg{text-align:center; font-size:12px; color:var(--danger); height:16px; margin-top:8px}
+#connState{margin-top:14px; font-size:11.5px; color:var(--ink3)}
+
+/* ── 헤더 ── */
+header{
+  position:sticky; top:0; z-index:50;
+  background:var(--surface); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:12px; padding:0 20px; height:56px;
+}
+.brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; white-space:nowrap}
+.brand .mark{
+  width:26px;height:26px;border-radius:7px; flex:0 0 auto;
+  background:linear-gradient(180deg,var(--pipe-water) 0 25%,var(--pipe-gas) 25% 50%,var(--pipe-steam) 50% 75%,var(--pipe-chem) 75% 100%);
+}
+.brand small{font-weight:500;color:var(--ink3);font-size:12px}
+nav{display:flex; gap:2px; margin-left:6px; overflow-x:auto}
+nav button{
+  border:0; background:none; color:var(--ink2); font:inherit; font-weight:600;
+  padding:8px 13px; border-radius:8px; cursor:pointer; white-space:nowrap;
+  display:flex; align-items:center; gap:6px;
+}
+nav button:hover{background:var(--surface2); color:var(--ink)}
+nav button.on{background:var(--accent); color:var(--bg)}
+nav .grip{display:none; cursor:grab; opacity:.55; font-size:11px; letter-spacing:-2px}
+body.editnav nav button{border:1px dashed var(--line2); animation:wig 1.2s ease-in-out infinite}
+body.editnav nav button:nth-child(odd){animation-delay:.15s}
+@keyframes wig{0%,100%{transform:rotate(0)}25%{transform:rotate(-.7deg)}75%{transform:rotate(.7deg)}}
+body.editnav nav .grip{display:inline}
+nav button.dragging{opacity:.35}
+nav button.dropL{box-shadow:-3px 0 0 var(--pipe-water)}
+nav button.dropR{box-shadow:3px 0 0 var(--pipe-water)}
+.hd-right{margin-left:auto; display:flex; align-items:center; gap:8px}
+.who{font-size:12.5px; color:var(--ink2); white-space:nowrap; cursor:pointer}
+.who b{color:var(--ink)}
+.tgl{
+  border:1px solid var(--line2); background:var(--surface2); color:var(--ink2);
+  height:34px; min-width:34px; padding:0 9px; border-radius:9px; cursor:pointer; font-size:13px; white-space:nowrap;
+}
+.tgl.active{background:var(--accent); color:var(--bg); border-color:var(--accent)}
+
+/* ── 레이아웃 ── */
+main{max-width:1440px; margin:0 auto; padding:22px 24px 90px}
+.page{display:none}
+.page.on{display:block; animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.pagehead{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap}
+h1{font-size:19px; font-weight:800; letter-spacing:-.02em}
+.pagehead .sub{color:var(--ink2); font-size:12.5px; margin-top:3px}
+.loading{padding:40px 0; text-align:center; color:var(--ink3); font-size:13px}
+.notice{
+  margin-bottom:14px; padding:9px 14px; border-radius:9px; font-size:12.5px; font-weight:600;
+  background:var(--pipe-gas-bg); color:var(--pipe-gas); border:1px solid color-mix(in srgb, var(--pipe-gas) 30%, transparent);
+}
+.notice.info{background:var(--pipe-water-bg); color:var(--pipe-water); border-color:color-mix(in srgb, var(--pipe-water) 30%, transparent)}
+
+.datebar{display:flex; align-items:center; gap:6px; position:relative}
+.datebar button{
+  border:1px solid var(--line2); background:var(--surface); color:var(--ink);
+  width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:14px;
+}
+.datebar .cur{
+  border:1px solid var(--line2); background:var(--surface); border-radius:8px;
+  padding:6px 12px; font-weight:700; font-size:13.5px; cursor:pointer; position:relative;
+}
+.datebar .cur:hover{border-color:var(--pipe-water); color:var(--pipe-water)}
+.datebar .today{width:auto; padding:0 10px; font-size:12px; font-weight:700}
+.datebar input[type=date],.datebar input[type=month]{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%}
+
+.grid{display:grid; gap:14px}
+.g2{grid-template-columns:repeat(auto-fill,minmax(420px,1fr))}
+@media(max-width:760px){.g2{grid-template-columns:1fr}}
+
+/* ── 계통 카드 ── */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; display:flex}
+.card .body{flex:1; min-width:0}
+.card .chead{display:flex; align-items:center; gap:9px; padding:11px 14px; border-bottom:1px solid var(--line); font-weight:700; font-size:13.5px}
+.pipe{width:5px; align-self:stretch}
+.chip{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; margin-left:auto}
+.c-water .pipe{background:var(--pipe-water)} .c-water .chip{background:var(--pipe-water-bg);color:var(--pipe-water)}
+.c-gas   .pipe{background:var(--pipe-gas)}   .c-gas .chip{background:var(--pipe-gas-bg);color:var(--pipe-gas)}
+.c-steam .pipe{background:var(--pipe-steam)} .c-steam .chip{background:var(--pipe-steam-bg);color:var(--pipe-steam)}
+.c-chem  .pipe{background:var(--pipe-chem)}  .c-chem .chip{background:var(--pipe-chem-bg);color:var(--pipe-chem)}
+.c-elec  .pipe{background:var(--pipe-elec)}  .c-elec .chip{background:var(--pipe-elec-bg);color:var(--pipe-elec)}
+.rows{padding:8px 14px 12px}
+.irow{display:grid; grid-template-columns:1fr 130px; gap:10px; align-items:center; padding:7px 0}
+.irow.tri{grid-template-columns:1fr 86px 86px}
+.irow + .irow{border-top:1px dashed var(--line)}
+.irow label{font-size:12.5px; color:var(--ink2); font-weight:600}
+.irow .colhead{font-size:11px; color:var(--ink3); text-align:center; font-weight:700}
+.irow input{
+  font:15px var(--num); text-align:right;
+  border:1px solid var(--line2); background:var(--surface2); color:var(--ink);
+  border-radius:8px; padding:8px 10px; width:100%;
+}
+.irow input:focus{outline:2px solid var(--pipe-water); outline-offset:-1px; border-color:transparent}
+.calc{display:flex; justify-content:space-between; gap:8px; padding:9px 14px; background:var(--surface2); border-top:1px solid var(--line); font-size:12px}
+.calc div{text-align:center; flex:1}
+.calc .k{color:var(--ink3); font-size:11px; display:block}
+.calc .v{font-family:var(--num); font-weight:700; font-size:14px}
+
+/* 근무자 선택 칩 */
+.dutywrap{padding:10px 14px 13px; display:flex; gap:8px; flex-wrap:wrap}
+.duty{
+  border:1px solid var(--line2); background:var(--surface2); color:var(--ink2);
+  font:inherit; font-size:13px; font-weight:700; padding:8px 15px; border-radius:20px; cursor:pointer;
+}
+.duty.sel{background:var(--pipe-chem); border-color:var(--pipe-chem); color:#fff}
+
+.savebar{
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  background:var(--surface); border-top:1px solid var(--line);
+  display:flex; align-items:center; gap:12px; padding:10px 20px;
+}
+.savebar .hint{color:var(--ink2); font-size:12.5px}
+.btn{border:0; border-radius:9px; font:inherit; font-weight:700; cursor:pointer; padding:10px 18px}
+.btn-pri{background:var(--accent); color:var(--bg); margin-left:auto}
+.btn-pri:disabled{opacity:.5; cursor:default}
+.btn-line{background:var(--surface); border:1px solid var(--line2); color:var(--ink)}
+.btn-sm{padding:6px 12px; font-size:12.5px; border-radius:7px}
+.btn-danger{background:none; border:1px solid var(--danger); color:var(--danger)}
+
+/* ── 보고 ── */
+.report{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px}
+.report h2{font-size:15px; font-weight:800; text-align:center}
+.report .meta{display:flex; justify-content:center; gap:18px; color:var(--ink2); font-size:12.5px; margin:8px 0 16px; flex-wrap:wrap}
+table{width:100%; border-collapse:collapse; font-size:12.5px}
+th,td{border:1px solid var(--line); padding:7px 9px; text-align:center}
+th{background:var(--surface2); font-weight:700; color:var(--ink2); font-size:11.5px}
+td.n{font-family:var(--num); text-align:right}
+td.l{text-align:left; font-weight:600}
+.dot{display:inline-block; width:8px; height:8px; border-radius:3px; margin-right:6px; vertical-align:1px}
+.toast{
+  position:fixed; bottom:74px; left:50%; transform:translateX(-50%);
+  background:var(--accent); color:var(--bg); font-weight:700; font-size:13px;
+  padding:9px 18px; border-radius:22px; opacity:0; pointer-events:none; transition:.25s; z-index:110;
+  max-width:88vw; text-align:center;
+}
+.toast.show{opacity:1; bottom:84px}
+
+/* ── 보일러 ── */
+.blr table input{font:13px var(--num); border:1px solid var(--line2); background:var(--surface2); color:var(--ink); border-radius:6px; padding:5px 6px; width:74px; text-align:center}
+.sumline{display:flex; gap:16px; padding:10px 14px; background:var(--surface2); border-top:1px solid var(--line); font-size:12.5px}
+.sumline b{font-family:var(--num)}
+.st{margin-left:auto; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px}
+.st-run{background:var(--pipe-chem-bg); color:var(--pipe-chem)}
+.st-off{background:var(--surface2); color:var(--ink3)}
+
+/* ── 약품 ── */
+.chem-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(196px,1fr)); gap:12px}
+.chem-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:13px 14px; border-top:3px solid var(--pipe-chem)}
+.chem-card h3{font-size:12.5px; margin-bottom:8px}
+.chem-card .stockN{font:800 26px var(--num); line-height:1}
+.chem-card .unit{font-size:11px; color:var(--ink3)}
+.chem-card .flow{display:flex; justify-content:space-between; font-size:11px; color:var(--ink2); margin-top:9px; padding-top:8px; border-top:1px dashed var(--line)}
+.chem-card .flow b{font-family:var(--num); color:var(--ink); display:block; font-size:13px}
+.chem-card .adj{margin-top:9px; width:100%}
+.low{border-top-color:var(--danger)} .low .stockN{color:var(--danger)}
+.badge-low{font-size:10px; font-weight:800; color:var(--danger); background:var(--pipe-steam-bg); border-radius:20px; padding:2px 7px; margin-left:6px; vertical-align:2px}
+
+/* ── 데이터 조회 ── */
+.seg{display:inline-flex; gap:2px; background:var(--surface); border:1px solid var(--line2); border-radius:9px; padding:3px; margin-bottom:12px}
+.seg button{border:0; background:none; color:var(--ink2); font:inherit; font-size:12.5px; font-weight:700; padding:6px 14px; border-radius:7px; cursor:pointer}
+.seg button.on{background:var(--accent); color:var(--bg)}
+.sheetwrap{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:74vh}
+.sheet{border-collapse:separate; border-spacing:0; font-size:12px; min-width:1180px; width:100%}
+.sheet th,.sheet td{border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:6px 9px; white-space:nowrap}
+.sheet thead th{position:sticky; top:0; z-index:3; background:var(--surface2); font-size:11px}
+.sheet thead tr.grp th{z-index:4; font-size:11.5px; font-weight:800; border-bottom:2px solid var(--line2)}
+.sheet thead tr:nth-child(2) th{top:31px}
+.sheet thead th.wrap{white-space:normal; min-width:66px; line-height:1.25; vertical-align:middle}
+.sheet td:first-child,.sheet th:first-child{position:sticky; left:0; z-index:2; background:var(--surface); text-align:left; font-weight:700; border-right:2px solid var(--line2)}
+.sheet thead th:first-child{z-index:5; background:var(--surface2)}
+.sheet td{font-family:var(--num); text-align:right}
+.sheet tbody tr:hover td{background:var(--surface2); cursor:pointer}
+.sheet tr.sel td{background:var(--pipe-water-bg)!important}
+.sheet .sun td:first-child{color:var(--danger)}
+.sheet .sat td:first-child{color:var(--pipe-water)}
+.g-water{box-shadow:inset 0 3px 0 var(--pipe-water)}
+.g-gas{box-shadow:inset 0 3px 0 var(--pipe-gas)}
+.g-pool{box-shadow:inset 0 3px 0 var(--pipe-steam)}
+.g-chem{box-shadow:inset 0 3px 0 var(--pipe-chem)}
+.g-b1{box-shadow:inset 0 3px 0 var(--pipe-steam)}
+.g-b2{box-shadow:inset 0 3px 0 color-mix(in srgb, var(--pipe-steam) 65%, var(--surface))}
+.g-b3{box-shadow:inset 0 3px 0 color-mix(in srgb, var(--pipe-steam) 35%, var(--surface))}
+.sheetfoot{display:flex; gap:16px; padding:10px 14px; font-size:12px; color:var(--ink2); flex-wrap:wrap}
+.sheetfoot b{font-family:var(--num); color:var(--ink)}
+
+/* ── 통계 ── */
+.statctl{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+.chips{display:flex; gap:6px; flex-wrap:wrap}
+.chips button{border:1px solid var(--line2); background:var(--surface); color:var(--ink2); font:inherit; font-size:12px; font-weight:700; padding:6px 12px; border-radius:16px; cursor:pointer}
+.chips button.on{background:var(--accent); border-color:var(--accent); color:var(--bg)}
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:14px}
+.kpi{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:13px 15px}
+.kpi .k{font-size:11.5px; color:var(--ink2); font-weight:600}
+.kpi .v{font:800 22px var(--num); margin-top:3px}
+.chartbox{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px}
+.chartbox h3{font-size:13.5px; margin-bottom:4px}
+.chartbox .cap{font-size:11.5px; color:var(--ink3); margin-bottom:12px}
+
+/* ── 모달 (근무자 관리) ── */
+#modal{position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; padding:16px}
+#modal.show{display:flex}
+.modalbox{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px; width:min(94vw,420px); max-height:86vh; overflow:auto}
+.modalbox h2{font-size:15px; margin-bottom:4px}
+.modalbox .sub{font-size:12px; color:var(--ink3); margin-bottom:14px}
+.wrow{display:grid; grid-template-columns:1fr 90px 34px; gap:8px; margin-bottom:8px}
+.wrow input{font:14px inherit; border:1px solid var(--line2); background:var(--surface2); color:var(--ink); border-radius:8px; padding:8px 10px; width:100%}
+.wrow input.pin{font-family:var(--num); text-align:center}
+.wrow button{border:1px solid var(--line2); background:var(--surface2); color:var(--danger); border-radius:8px; cursor:pointer; font-size:15px}
+.modalfoot{display:flex; gap:8px; margin-top:14px}
+.modalfoot .btn{flex:1}
+
+@media(max-width:760px){
+  header{padding:0 10px; gap:8px}
+  .brand small{display:none}
+  .who span{display:none}
+  main{padding:16px 12px 100px}
+  .irow{grid-template-columns:1fr 110px}
+  .irow.tri{grid-template-columns:1fr 76px 76px}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<!-- 로그인 -->
+<div id="login">
+  <div class="loginbox">
+    <div class="mark"></div>
+    <h1>기계실 검침</h1>
+    <div class="sub">가경국민체육센터 · 근무자를 선택하고 PIN을 입력하세요</div>
+    <div class="workers" id="workerBtns"><div class="loading" style="grid-column:1/-1;padding:14px 0">근무자 불러오는 중…</div></div>
+    <input id="pin" type="password" inputmode="numeric" maxlength="4" placeholder="····">
+    <button class="btn btn-pri" id="loginBtn" style="margin-left:0">로그인</button>
+    <div id="loginMsg"></div>
+  </div>
+  <div id="connState">서버 연결 중…</div>
+</div>
+
+<!-- 근무자 관리 모달 -->
+<div id="modal">
+  <div class="modalbox">
+    <h2>근무자 관리</h2>
+    <div class="sub">이름과 PIN(4자리)을 관리합니다 — 모든 근무자 화면에 즉시 반영됩니다</div>
+    <div id="wlist"></div>
+    <button class="btn btn-line btn-sm" id="wAdd">＋ 근무자 추가</button>
+    <div class="modalfoot">
+      <button class="btn btn-line" id="wCancel">취소</button>
+      <button class="btn btn-pri" id="wSave" style="margin-left:0">저장</button>
+    </div>
+  </div>
+</div>
+
+<header style="display:none" id="hdr">
+  <div class="brand"><span class="mark"></span>기계실 검침 <small>가경국민체육센터</small></div>
+  <nav id="nav"></nav>
+  <div class="hd-right">
+    <span class="who" id="whoBtn" title="근무자 변경"><span>근무 </span><b id="whoName"></b></span>
+    <button class="tgl" id="wmBtn" title="근무자 관리">👥</button>
+    <button class="tgl" id="editBtn" title="탭 순서 변경">⇄ 탭</button>
+    <button class="tgl" id="themeBtn" title="화면 모드">◐</button>
+  </div>
+</header>
+
+<main style="display:none" id="mainEl">
+
+<section class="page" id="p-input">
+  <div class="pagehead">
+    <div><h1 id="inputTitle">오늘 검침 입력</h1>
+      <div class="sub">금일 지침만 입력하면 전일값 · 사용량이 자동 계산됩니다</div></div>
+    <div class="datebar" data-nav="day"></div>
+  </div>
+  <div id="inputBody"><div class="loading">불러오는 중…</div></div>
+</section>
+
+<section class="page" id="p-report">
+  <div class="pagehead">
+    <div><h1>일일 보고</h1>
+      <div class="sub">해당 날짜의 검침 · 수질 · 보일러 · 약품 현황</div></div>
+    <div class="datebar" data-nav="day"></div>
+  </div>
+  <div id="reportBody"><div class="loading">불러오는 중…</div></div>
+</section>
+
+<section class="page" id="p-boiler">
+  <div class="pagehead">
+    <div><h1>보일러 운전일지</h1>
+      <div class="sub">기동 · 정지 시각만 입력 — 사용시간 · 일계 · 월누계 자동 계산</div></div>
+    <div class="datebar" data-nav="day"></div>
+  </div>
+  <div id="boilerBody"><div class="loading">불러오는 중…</div></div>
+</section>
+
+<section class="page" id="p-chem">
+  <div class="pagehead">
+    <div><h1 id="chemTitle">약품 재고</h1>
+      <div class="sub">일지 기준 자동 재고 — 「실사 보정」으로 실재고 반영</div></div>
+    <div class="datebar" data-nav="day"></div>
+  </div>
+  <div id="chemBody"><div class="loading">불러오는 중…</div></div>
+</section>
+
+<section class="page" id="p-data">
+  <div class="pagehead">
+    <div><h1 id="dataTitle">데이터 조회</h1>
+      <div class="sub">한 달 전체를 한눈에 — 행을 누르면 해당 날짜로 이동합니다</div></div>
+    <div class="datebar" data-nav="month"></div>
+  </div>
+  <div class="seg" id="dataSeg">
+    <button class="on" data-v="meter">검침 데이터</button>
+    <button data-v="boiler">보일러 운전</button>
+  </div>
+  <div id="sheetBody"><div class="loading">불러오는 중…</div></div>
+</section>
+
+<section class="page" id="p-stats">
+  <div class="pagehead">
+    <div><h1>사용량 통계</h1><div class="sub">일별 · 월별 · 년도별 사용량 추이</div></div>
+  </div>
+  <div class="statctl">
+    <div class="seg" style="margin:0" id="statSeg">
+      <button class="on" data-v="daily">일별</button>
+      <button data-v="monthly">월별</button>
+      <button data-v="yearly">년도별</button>
+    </div>
+    <div class="datebar" id="statNav"></div>
+  </div>
+  <div class="statctl"><div class="chips" id="statChips"></div></div>
+  <div id="statsBody"><div class="loading">집계 중…</div></div>
+</section>
+
+</main>
+
+<div class="savebar" id="savebar" style="display:none">
+  <span class="hint" id="saveHint"></span>
+  <button class="btn btn-pri" id="saveBtn">저장</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* ═══════════════════ Firebase ═══════════════════ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAaO2CxNa-RplxMNO2JgkUZLEbotPKWvbQ",
+  authDomain: "meter-data-fe914.firebaseapp.com",
+  projectId: "meter-data-fe914",
+  storageBucket: "meter-data-fe914.firebasestorage.app",
+  messagingSenderId: "734641698127",
+  appId: "1:734641698127:web:5a428484bd9d1dccdb013a"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+/* ═══════════════════ 상수 ═══════════════════ */
+const DEFAULT_WORKERS = [
+  { name:"박영규", pin:"0000" },
+  { name:"김찬주", pin:"0000" },
+  { name:"윤준성", pin:"0000" },
+  { name:"박종엽", pin:"0000" },
+];
+const CHEMS = [
+  { k:"salt",  n:"소금 (25kg/포)",              s:"소금",        u:"포", min:30 },
+  { k:"coag",  n:"응집제 매직풀900 (1ℓ/통)",     s:"응집제",      u:"통", min:15 },
+  { k:"shock", n:"위생처리제 매직쇼크 (1kg/통)",  s:"위생처리제",   u:"통", min:20 },
+  { k:"naocl", n:"차염소산나트륨 (20kg/통)",      s:"차염소산",     u:"통", min:10 },
+  { k:"neut",  n:"중화제 매직풀20 (4L/통)",       s:"중화제",      u:"통", min:2  },
+  { k:"ph",    n:"pH 감소제 (20L/통)",           s:"pH감소제",    u:"통", min:2  },
+  { k:"clean", n:"청관제 (20L/통)",              s:"청관제",      u:"통", min:2  },
+  { k:"disin", n:"방역소독제 (20L/통)",           s:"방역소독제",   u:"통", min:2  },
+];
+const METERS = [
+  { k:"water", n:"상수도",        cls:"c-water", chip:"WATER", color:"var(--pipe-water)" },
+  { k:"gas1",  n:"도시가스 1호기", cls:"c-gas",   chip:"GAS",   color:"var(--pipe-gas)" },
+  { k:"gas2",  n:"도시가스 2호기", cls:"c-gas",   chip:"GAS",   color:"var(--pipe-gas)" },
+  { k:"ghp",   n:"도시가스 GHP",  cls:"c-gas",   chip:"GAS",   color:"var(--pipe-gas)" },
+];
+const BOILERS = [1,2,3];
+const COL_R = "meter_readings", COL_B = "boiler_logs";
+
+/* ═══════════════════ 유틸 ═══════════════════ */
+const $ = s => document.querySelector(s);
+const fmt = n => (n==null||isNaN(n)) ? "—" : Number(n).toLocaleString("ko-KR");
+const pnum = v => { const n = parseFloat(String(v??"").replace(/,/g,"")); return isNaN(n) ? null : n; };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const fromIso = s => { const [y,m,dd] = s.split("-").map(Number); return new Date(y, m-1, dd); };
+const kdate = d => `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}. (${"일월화수목금토"[d.getDay()]})`;
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+};
+const hoursOf = runs => (runs||[]).reduce((s,r)=>{
+  if(!r || !r.s || !r.e) return s;
+  const [h1,m1]=r.s.split(":").map(Number), [h2,m2]=r.e.split(":").map(Number);
+  if([h1,m1,h2,m2].some(isNaN)) return s;
+  let h=(h2+m2/60)-(h1+m1/60); if(h<0)h+=24; return s+h;
+},0);
+let tmr;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(tmr); tmr=setTimeout(()=>t.classList.remove("show"),2400); }
+function esc(s){ return String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ═══════════════════ 상태 & 캐시 ═══════════════════ */
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const state = {
+  date: new Date(TODAY),
+  month: new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
+  order: ["input","report","boiler","chem","data","stats"],
+  cur: "input", dataView: "meter", worker: null,
+  statView: "daily", statMeter: "gasAll",
+  statMonth: new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
+  statYear: TODAY.getFullYear(),
+};
+const LABELS = { input:"오늘 검침", report:"일일 보고", boiler:"보일러 일지", chem:"약품 재고", data:"데이터 조회", stats:"사용량 통계" };
+try { const o = JSON.parse(store.get("gg_order")||"null"); if(Array.isArray(o) && o.length===6 && o.every(x=>LABELS[x])) state.order=o; } catch(e){}
+if(store.get("gg_theme")==="dark") document.body.dataset.theme="dark";
+
+let WORKERS = [];
+const rCache = new Map(), bCache = new Map();
+let renderToken = 0;
+
+/* ═══════════════════ 데이터 계층 ═══════════════════ */
+async function fetchReading(dateStr){
+  if(rCache.has(dateStr)) return rCache.get(dateStr);
+  const snap = await getDoc(doc(db, COL_R, dateStr));
+  const v = snap.exists() ? snap.data() : null;
+  rCache.set(dateStr, v); return v;
+}
+async function fetchPrevReading(dateStr){
+  const q = query(collection(db, COL_R), where("date","<",dateStr), orderBy("date","desc"), limit(1));
+  const snap = await getDocs(q);
+  return snap.empty ? null : snap.docs[0].data();
+}
+async function fetchRangeReadings(startStr, endStr){
+  const q = query(collection(db, COL_R), where("date",">=",startStr), where("date","<=",endStr), orderBy("date"));
+  const snap = await getDocs(q);
+  const arr = snap.docs.map(d=>d.data());
+  arr.forEach(r=>rCache.set(r.date, r));
+  return arr;
+}
+async function fetchBoiler(dateStr){
+  if(bCache.has(dateStr)) return bCache.get(dateStr);
+  const snap = await getDoc(doc(db, COL_B, dateStr));
+  const v = snap.exists() ? snap.data() : null;
+  bCache.set(dateStr, v); return v;
+}
+async function fetchRangeBoilers(startStr, endStr){
+  const q = query(collection(db, COL_B), where("date",">=",startStr), where("date","<=",endStr), orderBy("date"));
+  const snap = await getDocs(q);
+  const arr = snap.docs.map(d=>d.data());
+  arr.forEach(r=>bCache.set(r.date, r));
+  return arr;
+}
+async function saveReading(dateStr, data){
+  data.date = dateStr; data.worker = state.worker; data.updatedAt = new Date().toISOString();
+  await setDoc(doc(db, COL_R, dateStr), data);
+  rCache.set(dateStr, data);
+}
+async function saveBoiler(dateStr, data){
+  data.date = dateStr; data.worker = state.worker; data.updatedAt = new Date().toISOString();
+  await setDoc(doc(db, COL_B, dateStr), data);
+  bCache.set(dateStr, data);
+}
+async function loadWorkers(){
+  const snap = await getDoc(doc(db, "config", "workers"));
+  if(snap.exists() && Array.isArray(snap.data().list) && snap.data().list.length){
+    WORKERS = snap.data().list;
+  } else {
+    WORKERS = DEFAULT_WORKERS;
+    await setDoc(doc(db, "config", "workers"), { list: WORKERS });
+  }
+}
+async function saveWorkers(list){
+  WORKERS = list;
+  await setDoc(doc(db, "config", "workers"), { list });
+}
+
+/* ═══════════════════ 로그인 ═══════════════════ */
+let authed = false, selWorker = null;
+onAuthStateChanged(auth, async u => {
+  authed = !!u;
+  $("#connState").textContent = u ? "서버 연결됨" : "서버 연결 중…";
+  if(u && !WORKERS.length){
+    try { await loadWorkers(); renderWorkerBtns(); }
+    catch(e){ console.error(e); $("#connState").textContent="근무자 목록 로드 실패 — Firestore 규칙을 확인하세요"; }
+  }
+});
+signInAnonymously(auth).catch(e => {
+  $("#connState").textContent = "서버 연결 실패 — 인터넷 또는 Firebase 익명 로그인 설정을 확인하세요";
+  console.error(e);
+});
+function renderWorkerBtns(){
+  $("#workerBtns").innerHTML = WORKERS.map(w=>`<button data-w="${esc(w.name)}">${esc(w.name)}</button>`).join("");
+  const lastW = store.get("gg_worker");
+  if(lastW){ const b=document.querySelector(`#workerBtns button[data-w="${lastW}"]`); if(b){ b.classList.add("sel"); selWorker=lastW; } }
+}
+$("#workerBtns").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.querySelectorAll("#workerBtns button").forEach(x=>x.classList.remove("sel"));
+  b.classList.add("sel"); selWorker=b.dataset.w; $("#pin").focus();
+});
+function tryLogin(){
+  if(!selWorker){ $("#loginMsg").textContent="근무자를 선택하세요"; return; }
+  const w = WORKERS.find(x=>x.name===selWorker);
+  if(!w || $("#pin").value !== w.pin){ $("#loginMsg").textContent="PIN이 올바르지 않습니다"; $("#pin").value=""; return; }
+  if(!authed){ $("#loginMsg").textContent="서버 연결 대기 중 — 잠시 후 다시 시도하세요"; return; }
+  state.worker = w.name; store.set("gg_worker", w.name);
+  $("#login").style.display="none"; $("#hdr").style.display="flex"; $("#mainEl").style.display="block";
+  $("#whoName").textContent = w.name;
+  renderNav(); go("input");
+}
+$("#loginBtn").onclick = tryLogin;
+$("#pin").addEventListener("keydown", e=>{ if(e.key==="Enter") tryLogin(); });
+$("#whoBtn").onclick = ()=>{ location.reload(); };
+
+/* ═══════════════════ 근무자 관리 ═══════════════════ */
+$("#wmBtn").onclick = ()=>{
+  const rows = WORKERS.map(w=>wRow(w.name,w.pin)).join("");
+  $("#wlist").innerHTML = rows;
+  $("#modal").classList.add("show");
+};
+function wRow(name="",pin=""){
+  return `<div class="wrow">
+    <input class="wname" value="${esc(name)}" placeholder="이름">
+    <input class="pin wpin" value="${esc(pin)}" placeholder="PIN" maxlength="4" inputmode="numeric">
+    <button class="wdel" title="삭제">✕</button></div>`;
+}
+$("#wAdd").onclick = ()=>$("#wlist").insertAdjacentHTML("beforeend", wRow());
+$("#wlist").addEventListener("click", e=>{
+  if(e.target.classList.contains("wdel")) e.target.closest(".wrow").remove();
+});
+$("#wCancel").onclick = ()=>$("#modal").classList.remove("show");
+$("#wSave").onclick = async ()=>{
+  const list=[];
+  document.querySelectorAll("#wlist .wrow").forEach(r=>{
+    const name=r.querySelector(".wname").value.trim();
+    const pin=r.querySelector(".wpin").value.trim();
+    if(name && /^\d{4}$/.test(pin)) list.push({name,pin});
+  });
+  if(!list.length) return toast("근무자가 최소 1명 필요합니다 (PIN은 숫자 4자리)");
+  try{
+    await saveWorkers(list);
+    $("#modal").classList.remove("show");
+    toast("근무자 목록이 저장되었습니다");
+    if(state.cur==="input") renderPage("input");
+  }catch(e){ console.error(e); toast("저장 실패 — 연결을 확인하세요"); }
+};
+
+/* ═══════════════════ 탭 ═══════════════════ */
+const nav = $("#nav");
+function renderNav(){
+  nav.innerHTML = state.order.map(p=>
+    `<button data-p="${p}" class="${p===state.cur?"on":""}" draggable="true"><span class="grip">⠿</span>${LABELS[p]}</button>`).join("");
+}
+nav.addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b||document.body.classList.contains("editnav")) return;
+  go(b.dataset.p);
+});
+let dragEl=null;
+nav.addEventListener("dragstart", e=>{
+  if(!document.body.classList.contains("editnav")){ e.preventDefault(); return; }
+  dragEl=e.target.closest("button"); dragEl.classList.add("dragging");
+});
+nav.addEventListener("dragover", e=>{
+  e.preventDefault();
+  const t=e.target.closest("button"); if(!t||t===dragEl) return;
+  nav.querySelectorAll("button").forEach(b=>b.classList.remove("dropL","dropR"));
+  const r=t.getBoundingClientRect();
+  t.classList.add(e.clientX < r.left+r.width/2 ? "dropL" : "dropR");
+});
+nav.addEventListener("drop", e=>{
+  e.preventDefault();
+  const t=e.target.closest("button"); if(!t||!dragEl||t===dragEl) return cleanupDrag();
+  const from=state.order.indexOf(dragEl.dataset.p);
+  let to=state.order.indexOf(t.dataset.p);
+  const r=t.getBoundingClientRect();
+  if(e.clientX >= r.left+r.width/2) to++;
+  state.order.splice(from,1);
+  state.order.splice(to>from?to-1:to,0,dragEl.dataset.p);
+  cleanupDrag(); renderNav(); store.set("gg_order", JSON.stringify(state.order));
+  toast("탭 순서가 저장되었습니다");
+});
+nav.addEventListener("dragend", cleanupDrag);
+function cleanupDrag(){ dragEl?.classList.remove("dragging"); dragEl=null; nav.querySelectorAll("button").forEach(b=>b.classList.remove("dropL","dropR")); }
+$("#editBtn").onclick = function(){
+  document.body.classList.toggle("editnav");
+  this.classList.toggle("active");
+  if(document.body.classList.contains("editnav")) toast("탭을 끌어서 순서를 바꾸세요");
+};
+$("#themeBtn").onclick = ()=>{
+  document.body.dataset.theme = document.body.dataset.theme==="light" ? "dark" : "light";
+  store.set("gg_theme", document.body.dataset.theme);
+  if(state.cur==="stats") renderPage("stats");
+};
+
+function go(p){
+  state.cur=p; renderNav();
+  document.querySelectorAll(".page").forEach(x=>x.classList.remove("on"));
+  $("#p-"+p).classList.add("on");
+  $("#savebar").style.display = (p==="input"||p==="boiler") ? "flex" : "none";
+  renderPage(p); window.scrollTo({top:0});
+}
+
+/* ═══════════════════ 날짜 내비 ═══════════════════ */
+function renderDatebars(){
+  document.querySelectorAll(".datebar[data-nav]").forEach(dbEl=>{
+    if(dbEl.dataset.nav==="month"){
+      const m=state.month;
+      dbEl.innerHTML = `<button data-a="pm">‹</button>
+        <span class="cur" style="position:relative">${m.getFullYear()}년 ${m.getMonth()+1}월
+          <input type="month" value="${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}"></span>
+        <button data-a="nm">›</button>
+        <button class="today" data-a="tm">이달</button>`;
+    } else {
+      dbEl.innerHTML = `<button data-a="pd">‹</button>
+        <span class="cur" style="position:relative">${kdate(state.date)}
+          <input type="date" value="${iso(state.date)}" max="${iso(TODAY)}"></span>
+        <button data-a="nd">›</button>
+        <button class="today" data-a="td">오늘</button>`;
+    }
+  });
+}
+document.addEventListener("click", e=>{
+  const a=e.target.dataset?.a; if(!a) return;
+  if(a==="pd") shiftDay(-1);
+  if(a==="nd") shiftDay(1);
+  if(a==="td"){ state.date=new Date(TODAY); refresh(); }
+  if(a==="pm") shiftMonth(-1);
+  if(a==="nm") shiftMonth(1);
+  if(a==="tm"){ state.month=new Date(TODAY.getFullYear(),TODAY.getMonth(),1); refresh(); }
+  if(a==="spm") shiftStatMonth(-1);
+  if(a==="snm") shiftStatMonth(1);
+  if(a==="spy"){ state.statYear--; renderPage("stats"); }
+  if(a==="sny"){ if(state.statYear<TODAY.getFullYear()){ state.statYear++; renderPage("stats"); } }
+});
+document.addEventListener("change", e=>{
+  if(e.target.type==="date" && e.target.closest(".datebar[data-nav]")){ state.date=fromIso(e.target.value); refresh(); }
+  if(e.target.type==="month" && e.target.closest(".datebar[data-nav]")){ const[y,m]=e.target.value.split("-").map(Number); state.month=new Date(y,m-1,1); refresh(); }
+  if(e.target.type==="month" && e.target.closest("#statNav")){ const[y,m]=e.target.value.split("-").map(Number); state.statMonth=new Date(y,m-1,1); renderPage("stats"); }
+});
+function shiftDay(n){ const d=new Date(state.date); d.setDate(d.getDate()+n); if(d>TODAY) return toast("아직 오지 않은 날짜입니다"); state.date=d; refresh(); }
+function shiftMonth(n){ const m=new Date(state.month); m.setMonth(m.getMonth()+n); if(m>TODAY) return; state.month=m; refresh(); }
+function shiftStatMonth(n){ const m=new Date(state.statMonth); m.setMonth(m.getMonth()+n); if(m>TODAY) return; state.statMonth=m; renderPage("stats"); }
+function refresh(){ renderPage(state.cur); }
+
+function renderPage(p){
+  renderDatebars();
+  const token = ++renderToken;
+  if(p==="input") renderInput(token);
+  if(p==="report") renderReport(token);
+  if(p==="boiler") renderBoiler(token);
+  if(p==="chem") renderChem(token);
+  if(p==="data") renderSheet(token);
+  if(p==="stats") renderStats(token);
+}
+
+/* ═══════════════════ 1. 검침 입력 ═══════════════════ */
+let inputPrev = null;
+let dutySel = new Set();
+async function renderInput(token){
+  const d=state.date, ds=iso(d);
+  $("#inputBody").innerHTML = `<div class="loading">불러오는 중…</div>`;
+  const [cur, prev] = await Promise.all([fetchReading(ds), fetchPrevReading(ds)]);
+  if(token!==renderToken) return;
+  inputPrev = prev;
+  dutySel = new Set(cur?.dutyWorkers || (iso(d)===iso(TODAY) && state.worker ? [state.worker] : []));
+  const isToday = ds===iso(TODAY);
+  $("#inputTitle").textContent = isToday ? "오늘 검침 입력" : "검침 기록 · "+kdate(d);
+  $("#saveHint").textContent = cur
+    ? `마지막 저장 · ${cur.updatedAt ? cur.updatedAt.slice(5,16).replace("T"," ") : ""} (${cur.worker||""})`
+    : "아직 저장된 기록이 없습니다";
+  const noticeHtml = !isToday ? `<div class="notice">지난 날짜의 기록입니다 — 수정 후 저장하면 이 날짜 기준으로 다시 계산됩니다</div>` : "";
+  const mv = k => cur?.meters?.[k] ?? "";
+  const pv = k => prev?.meters?.[k];
+  const dutyChips = WORKERS.map(w=>
+    `<button class="duty${dutySel.has(w.name)?" sel":""}" data-duty="${esc(w.name)}">${esc(w.name)}</button>`).join("");
+  const meterCard = m => `
+    <div class="card ${m.cls}"><div class="pipe"></div><div class="body">
+      <div class="chead">${m.n}<span class="chip">${m.chip}</span></div>
+      <div class="rows">
+        <div class="irow"><label>금일 지침 (㎥)</label><input class="num" id="in-${m.k}" value="${mv(m.k)===""?"":fmt(mv(m.k))}" inputmode="decimal"></div>
+      </div>
+      <div class="calc">
+        <div><span class="k">전일 지침${prev?` (${prev.date.slice(5).replace("-","/")})`:""}</span><span class="v">${fmt(pv(m.k))}</span></div>
+        <div><span class="k">일 사용량</span><span class="v" id="use-${m.k}" style="color:${m.color}">—</span></div>
+      </div>
+    </div></div>`;
+  const chemRows = CHEMS.map((c,i)=>`
+    <div class="irow tri"><label>${c.n}</label>
+      <input class="num" id="chu-${i}" placeholder="사용" value="${cur?.chem?.use?.[i] ?? ""}" inputmode="decimal">
+      <input class="num" id="chi-${i}" placeholder="입고" value="${cur?.chem?.in?.[i] ?? ""}" inputmode="decimal">
+    </div>`).join("");
+  $("#inputBody").innerHTML = noticeHtml + `
+    <div class="card c-chem" style="margin-bottom:14px"><div class="pipe" style="background:var(--accent)"></div><div class="body">
+      <div class="chead">당일 근무자<span class="chip" style="background:var(--surface2);color:var(--ink2)" id="dutyCount">${dutySel.size}명 선택</span></div>
+      <div class="dutywrap" id="dutyWrap">${dutyChips}</div>
+    </div></div>
+    <div class="grid g2">
+    ${METERS.map(meterCard).join("")}
+    <div class="card c-water"><div class="pipe"></div><div class="body">
+      <div class="chead">수영장 수질<span class="chip">POOL</span></div>
+      <div class="rows">
+        <div class="irow"><label>수온 (°C)</label><input class="num" id="in-ptemp" value="${cur?.pool?.temp ?? ""}" inputmode="decimal"></div>
+        <div class="irow"><label>염소 CL (ppm)</label><input class="num" id="in-pcl" value="${cur?.pool?.cl ?? ""}" inputmode="decimal"></div>
+        <div class="irow"><label>pH</label><input class="num" id="in-pph" value="${cur?.pool?.ph ?? ""}" inputmode="decimal"></div>
+      </div>
+      <div class="calc"><div><span class="k">기준</span><span class="v" style="font-size:11.5px">CL 0.4~1.0 · pH 5.8~8.6</span></div></div>
+    </div></div>
+    <div class="card c-elec"><div class="pipe"></div><div class="body">
+      <div class="chead">매점 · 환경<span class="chip">SUB</span></div>
+      <div class="rows">
+        <div class="irow"><label>매점 전기 (kWh)</label><input class="num" id="in-selec" value="${cur?.store?.elec==null?"":fmt(cur.store.elec)}" inputmode="decimal"></div>
+        <div class="irow"><label>매점 수도 (㎥)</label><input class="num" id="in-swater" value="${cur?.store?.water==null?"":fmt(cur.store.water)}" inputmode="decimal"></div>
+        <div class="irow"><label>외기온도 (°C)</label><input class="num" id="in-tout" value="${cur?.env?.tout ?? ""}" inputmode="decimal"></div>
+        <div class="irow"><label>실내온도 (°C)</label><input class="num" id="in-tin" value="${cur?.env?.tin ?? ""}" inputmode="decimal"></div>
+      </div>
+    </div></div>
+    <div class="card c-chem"><div class="pipe"></div><div class="body">
+      <div class="chead">약품 사용 · 입고<span class="chip">CHEM</span></div>
+      <div class="rows">
+        <div class="irow tri"><label></label><span class="colhead">사용</span><span class="colhead">입고</span></div>
+        ${chemRows}
+      </div>
+    </div></div>
+  </div>`;
+  $("#dutyWrap").addEventListener("click", e=>{
+    const b=e.target.closest(".duty"); if(!b) return;
+    const n=b.dataset.duty;
+    if(dutySel.has(n)) dutySel.delete(n); else dutySel.add(n);
+    b.classList.toggle("sel");
+    $("#dutyCount").textContent = dutySel.size+"명 선택";
+  });
+  METERS.forEach(m=>{
+    const upd = ()=>{
+      const v=pnum($("#in-"+m.k).value), p=pv(m.k);
+      $("#use-"+m.k).textContent = (v!=null && p!=null) ? fmt(Math.round((v-p)*100)/100) : "—";
+    };
+    $("#in-"+m.k).addEventListener("input", upd); upd();
+  });
+}
+async function saveInputPage(){
+  const ds = iso(state.date);
+  const meters={}, chemUse=[], chemIn=[];
+  METERS.forEach(m=>meters[m.k]=pnum($("#in-"+m.k).value));
+  CHEMS.forEach((c,i)=>{ chemUse.push(pnum($("#chu-"+i).value)||0); chemIn.push(pnum($("#chi-"+i).value)||0); });
+  const prevStock = inputPrev?.chem?.stock;
+  const existing = rCache.get(ds);
+  const baseStock = Array.isArray(prevStock)&&prevStock.length ? padArr(prevStock) : CHEMS.map(()=>0);
+  const stock = baseStock.map((s,i)=>Math.round(((s||0)+chemIn[i]-chemUse[i])*100)/100);
+  const data = {
+    meters,
+    pool: { temp:pnum($("#in-ptemp").value), cl:pnum($("#in-pcl").value), ph:pnum($("#in-pph").value) },
+    store:{ elec:pnum($("#in-selec").value), water:pnum($("#in-swater").value) },
+    env:  { tout:pnum($("#in-tout").value), tin:pnum($("#in-tin").value) },
+    chem: { use:chemUse, in:chemIn, stock },
+    dutyWorkers: [...dutySel],
+  };
+  await saveReading(ds, data);
+  toast("검침이 저장되었습니다");
+  renderPage("input");
+}
+function padArr(a){ const r=[...a]; while(r.length<CHEMS.length) r.push(0); return r.slice(0,CHEMS.length); }
+
+/* ═══════════════════ 2. 일일 보고 ═══════════════════ */
+async function renderReport(token){
+  const d=state.date, ds=iso(d);
+  $("#reportBody").innerHTML = `<div class="loading">불러오는 중…</div>`;
+  const [cur, prev, blr] = await Promise.all([fetchReading(ds), fetchPrevReading(ds), fetchBoiler(ds)]);
+  if(token!==renderToken) return;
+  if(!cur && !blr){
+    $("#reportBody").innerHTML = `<div class="notice info">이 날짜에 저장된 기록이 없습니다 — 「오늘 검침」에서 먼저 입력하세요</div>`;
+    return;
+  }
+  const usage = k => (cur?.meters?.[k]!=null && prev?.meters?.[k]!=null) ? Math.round((cur.meters[k]-prev.meters[k])*100)/100 : null;
+  const mRow = m => `<tr><td class="l"><span class="dot" style="background:${m.color}"></span>${m.n}</td>
+    <td class="n">${fmt(cur?.meters?.[m.k])}</td><td class="n">${fmt(usage(m.k))}</td></tr>`;
+  const bLine = n => {
+    const runs = (blr?.["b"+n]||[]).filter(r=>r.s&&r.e);
+    return runs.length ? runs.map(r=>`${r.s}~${r.e}`).join(" · ")+` (${hoursOf(runs).toFixed(1)}h)` : "미가동";
+  };
+  const pStock = padArr(prev?.chem?.stock||[]);
+  const cStock = padArr(cur?.chem?.stock||[]);
+  const cUse = padArr(cur?.chem?.use||[]), cIn = padArr(cur?.chem?.in||[]);
+  const chRow = (c,i)=>`<tr><td class="l"><span class="dot" style="background:var(--pipe-chem)"></span>${c.n}</td>
+      <td class="n">${fmt(prev?pStock[i]:null)}</td><td class="n">${fmt(cur?cIn[i]:null)}</td><td class="n">${fmt(cur?cUse[i]:null)}</td>
+      <td class="n"${cur&&cStock[i]!=null&&cStock[i]<=c.min?' style="color:var(--danger);font-weight:700"':""}>${fmt(cur?cStock[i]:null)}</td></tr>`;
+  const pool = cur?.pool||{};
+  const duty = cur?.dutyWorkers?.length ? cur.dutyWorkers.join(", ") : (cur?.worker||blr?.worker||"—");
+  $("#reportBody").innerHTML = `<div class="report">
+    <h2>가경국민체육센터 일일 검침 데이터</h2>
+    <div class="meta"><span>${kdate(d)}</span><span>근무자 : ${esc(duty)}</span>
+      ${cur?.env?.tout!=null?`<span>외기 ${cur.env.tout}°C · 실내 ${cur.env.tin??"—"}°C</span>`:""}</div>
+    <table>
+      <tr><th style="width:30%">구분</th><th>검침량(㎥)</th><th>일사용량(㎥)</th></tr>
+      ${METERS.map(mRow).join("")}
+    </table>
+    <div style="height:12px"></div>
+    <div class="grid g2">
+      <table><tr><th colspan="3">수영장 수질</th></tr>
+        <tr><th>수온(°C)</th><th>CL(ppm)</th><th>pH</th></tr>
+        <tr><td class="n">${pool.temp??"—"}</td><td class="n">${pool.cl??"—"}</td><td class="n">${pool.ph??"—"}</td></tr></table>
+      <table><tr><th colspan="2">보일러 운전</th></tr>
+        ${BOILERS.map(n=>`<tr><th style="width:70px">${n}호기</th><td class="n">${bLine(n)}</td></tr>`).join("")}</table>
+    </div>
+    <div style="height:12px"></div>
+    <table>
+      <tr><th>약품</th><th>전일재고</th><th>입고</th><th>금일사용</th><th>금일재고</th></tr>
+      ${CHEMS.map(chRow).join("")}
+    </table>
+  </div>`;
+}
+
+/* ═══════════════════ 3. 보일러 일지 ═══════════════════ */
+async function renderBoiler(token){
+  const d=state.date, ds=iso(d);
+  $("#boilerBody").innerHTML = `<div class="loading">불러오는 중…</div>`;
+  const ms = iso(new Date(d.getFullYear(), d.getMonth(), 1));
+  const [cur, monthArr] = await Promise.all([fetchBoiler(ds), fetchRangeBoilers(ms, ds)]);
+  if(token!==renderToken) return;
+  const monthHours = n => monthArr.reduce((s,doc)=>s+hoursOf(doc["b"+n]),0);
+  const mkCard = n => {
+    const runs = cur?.["b"+n] || [];
+    const rows = Array.from({length:4},(_,i)=>{
+      const r = runs[i]||{};
+      return `<tr><td>${i+1}차</td>
+        <td><input id="b${n}s${i}" value="${r.s||""}" placeholder="HH:MM"></td>
+        <td><input id="b${n}e${i}" value="${r.e||""}" placeholder="HH:MM"></td>
+        <td class="n" id="b${n}h${i}">—</td>
+        <td><input id="b${n}t${i}" value="${r.t??""}" placeholder="℃"></td></tr>`;
+    }).join("");
+    const dh = hoursOf(runs);
+    return `<div class="card c-steam blr"><div class="pipe"></div><div class="body">
+      <div class="chead">${n}호 보일러 (1.5톤)<span class="st ${dh?"st-run":"st-off"}" id="bst${n}">${dh?"가동":"미가동"}</span></div>
+      <div style="padding:12px 14px"><table>
+        <tr><th style="width:60px">회차</th><th>기동시간</th><th>정지시간</th><th>사용시간</th><th>배기온도(℃)</th></tr>
+        ${rows}</table></div>
+      <div class="sumline"><span>일 계 <b id="bday${n}">0</b></span><span>월 누계 <b>${monthHours(n).toFixed(1)} h</b></span></div>
+    </div></div>`;
+  };
+  $("#boilerBody").innerHTML = `<div class="grid">${BOILERS.map(mkCard).join("")}</div>`;
+  $("#saveHint").textContent = cur
+    ? `마지막 저장 · ${cur.updatedAt ? cur.updatedAt.slice(5,16).replace("T"," ") : ""} (${cur.worker||""})`
+    : "아직 저장된 일지가 없습니다";
+  const updCalc = ()=>{
+    BOILERS.forEach(n=>{
+      let day=0;
+      for(let i=0;i<4;i++){
+        const s=$(`#b${n}s${i}`).value.trim(), e=$(`#b${n}e${i}`).value.trim();
+        const h = hoursOf([{s,e}]);
+        $(`#b${n}h${i}`).textContent = (s&&e&&h>0) ? h.toFixed(1)+" h" : "—";
+        day += (s&&e) ? h : 0;
+      }
+      $(`#bday${n}`).textContent = day.toFixed(1)+" h";
+      const st=$(`#bst${n}`); st.textContent=day?"가동":"미가동";
+      st.className="st "+(day?"st-run":"st-off");
+    });
+  };
+  document.querySelectorAll("#boilerBody input").forEach(inp=>inp.addEventListener("input", updCalc));
+  updCalc();
+}
+async function saveBoilerPage(){
+  const ds=iso(state.date);
+  const norm = v => {
+    v=v.trim(); if(!v) return "";
+    const m=v.match(/^(\d{1,2})[:시]?(\d{0,2})/);
+    if(!m) return "";
+    const h=String(Math.min(23,+m[1])).padStart(2,"0"), mm=String(Math.min(59,+(m[2]||0))).padStart(2,"0");
+    return `${h}:${mm}`;
+  };
+  const data={};
+  BOILERS.forEach(n=>{
+    data["b"+n]=[];
+    for(let i=0;i<4;i++){
+      const s=norm($(`#b${n}s${i}`).value), e=norm($(`#b${n}e${i}`).value), t=pnum($(`#b${n}t${i}`).value);
+      if(s||e||t!=null) data["b"+n].push({s,e,t:t==null?"":t});
+    }
+  });
+  await saveBoiler(ds, data);
+  toast("운전일지가 저장되었습니다");
+  renderPage("boiler");
+}
+
+/* ═══════════════════ 4. 약품 재고 ═══════════════════ */
+async function renderChem(token){
+  const d=state.date, ds=iso(d);
+  $("#chemBody").innerHTML = `<div class="loading">불러오는 중…</div>`;
+  let base = await fetchReading(ds);
+  if(!base) base = await fetchPrevReading(ds);
+  if(token!==renderToken) return;
+  $("#chemTitle").textContent = `약품 재고 · ${d.getMonth()+1}월 ${d.getDate()}일 기준`;
+  if(!base){
+    $("#chemBody").innerHTML = `<div class="notice info">저장된 기록이 없습니다 — 「오늘 검침」에서 사용·입고를 입력하거나 실사로 시작 재고를 잡으세요</div>`;
+    return;
+  }
+  const stock = padArr(base.chem?.stock||[]);
+  const use = base.date===ds ? padArr(base.chem?.use||[]) : CHEMS.map(()=>0);
+  const inn = base.date===ds ? padArr(base.chem?.in||[]) : CHEMS.map(()=>0);
+  const stale = base.date!==ds ? `<div class="notice info">이 날짜의 기록이 없어 가장 최근 기록(${base.date}) 기준 재고를 표시합니다</div>` : "";
+  $("#chemBody").innerHTML = stale + `<div class="chem-grid">` + CHEMS.map((c,i)=>{
+    const low = stock[i]!=null && stock[i]<=c.min;
+    return `<div class="chem-card${low?" low":""}"><h3>${c.n}${low?'<span class="badge-low">발주 필요</span>':""}</h3>
+      <div class="stockN">${fmt(stock[i])}</div><span class="unit">${c.u}</span>
+      <div class="flow"><span>금일 사용<b>${fmt(use[i])}</b></span><span>금일 입고<b>${fmt(inn[i])}</b></span></div>
+      <button class="btn btn-line btn-sm adj" data-i="${i}">실사 보정</button></div>`;
+  }).join("") + `</div>`;
+  document.querySelectorAll(".adj").forEach(b=>b.onclick=()=>adjustStock(ds, +b.dataset.i, stock));
+}
+async function adjustStock(ds, i, curStock){
+  const v = prompt(`${CHEMS[i].n}\n실사한 실제 재고를 입력하세요 (${CHEMS[i].u})`, curStock[i]??"");
+  if(v==null) return;
+  const n = pnum(v); if(n==null) return toast("숫자를 입력하세요");
+  const cur = (await fetchReading(ds)) || { meters:{}, pool:{}, store:{}, env:{}, chem:{ use:CHEMS.map(()=>0), in:CHEMS.map(()=>0), stock:[...curStock] } };
+  cur.chem = cur.chem || { use:CHEMS.map(()=>0), in:CHEMS.map(()=>0), stock:[...curStock] };
+  cur.chem.stock = padArr(cur.chem.stock&&cur.chem.stock.length?cur.chem.stock:[...curStock]);
+  cur.chem.stock[i] = n;
+  await saveReading(ds, cur);
+  toast(`${CHEMS[i].n} 재고가 ${fmt(n)}${CHEMS[i].u}로 보정되었습니다`);
+  renderPage("chem");
+}
+
+/* ═══════════════════ 5. 데이터 조회 ═══════════════════ */
+$("#dataSeg").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.querySelectorAll("#dataSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); state.dataView=b.dataset.v; renderPage("data");
+});
+async function renderSheet(token){
+  const m=state.month;
+  const startS = iso(m);
+  const lastDay = new Date(m.getFullYear(), m.getMonth()+1, 0);
+  const endCap = (m.getFullYear()===TODAY.getFullYear() && m.getMonth()===TODAY.getMonth()) ? TODAY : lastDay;
+  const endS = iso(endCap);
+  $("#sheetBody").innerHTML = `<div class="loading">불러오는 중…</div>`;
+  if(state.dataView==="boiler"){
+    const arr = await fetchRangeBoilers(startS, endS);
+    if(token!==renderToken) return;
+    renderBoilerSheet(m, endCap, arr);
+  } else {
+    const [arr, prevDoc] = await Promise.all([fetchRangeReadings(startS, endS), fetchPrevReading(startS)]);
+    if(token!==renderToken) return;
+    renderMeterSheet(m, endCap, arr, prevDoc);
+  }
+}
+function sheetShell(head, body, foot){
+  $("#sheetBody").innerHTML = `<div class="sheetwrap"><table class="sheet">${head}${body}</table></div><div class="sheetfoot">${foot}</div>`;
+}
+function renderMeterSheet(m, endCap, arr, prevDoc){
+  $("#dataTitle").textContent = `데이터 조회 · ${m.getFullYear()}년 ${m.getMonth()+1}월`;
+  const byDate = Object.fromEntries(arr.map(r=>[r.date,r]));
+  const chemHead = CHEMS.map(c=>{
+    const nm = c.n.replace(" (", "<br>(");
+    return `<th class="wrap">${nm}</th>`;
+  }).join("");
+  const head = `<thead>
+    <tr class="grp"><th></th>
+      <th colspan="3" class="g-water">상수도</th><th colspan="3" class="g-gas">도시가스 1호기</th>
+      <th colspan="3" class="g-gas">도시가스 2호기</th><th colspan="3" class="g-gas">GHP</th>
+      <th colspan="3" class="g-pool">수영장 수질</th><th colspan="${CHEMS.length}" class="g-chem">약품 사용</th></tr>
+    <tr><th>날짜</th>
+      ${"<th>검침</th><th>사용</th><th>누적</th>".repeat(4)}
+      <th>수온</th><th>CL</th><th>pH</th>
+      ${chemHead}</tr></thead>`;
+  let body="<tbody>";
+  const cum={water:0,gas1:0,gas2:0,ghp:0};
+  let lastMeters = prevDoc?.meters ? {...prevDoc.meters} : {};
+  const end = endCap.getDate();
+  for(let day=1; day<=end; day++){
+    const d=new Date(m.getFullYear(), m.getMonth(), day), ds=iso(d);
+    const r=byDate[ds];
+    const cls=[d.getDay()===0?"sun":"", d.getDay()===6?"sat":"", ds===iso(state.date)?"sel":""].join(" ");
+    let cells="";
+    METERS.forEach(mt=>{
+      const cur=r?.meters?.[mt.k], prev=lastMeters[mt.k];
+      const use=(cur!=null&&prev!=null)?Math.round((cur-prev)*100)/100:null;
+      if(use!=null) cum[mt.k]+=use;
+      cells+=`<td>${fmt(cur)==="—"?"":fmt(cur)}</td><td>${use==null?"":fmt(use)}</td><td>${cum[mt.k]?fmt(Math.round(cum[mt.k]*100)/100):""}</td>`;
+    });
+    if(r?.meters) METERS.forEach(mt=>{ if(r.meters[mt.k]!=null) lastMeters[mt.k]=r.meters[mt.k]; });
+    cells+=`<td>${r?.pool?.temp??""}</td><td>${r?.pool?.cl??""}</td><td>${r?.pool?.ph??""}</td>`;
+    const uArr = r ? padArr(r.chem?.use||[]) : [];
+    for(let i=0;i<CHEMS.length;i++) cells+=`<td>${r&&uArr[i]?uArr[i]:""}</td>`;
+    body+=`<tr class="${cls}" data-d="${ds}"><td>${m.getMonth()+1}/${day} (${"일월화수목금토"[d.getDay()]})</td>${cells}</tr>`;
+  }
+  body+="</tbody>";
+  const foot = `<span>월 합계 — 상수도 <b>${fmt(Math.round(cum.water*100)/100)}</b> ㎥</span>
+    <span>가스1호기 <b>${fmt(Math.round(cum.gas1*100)/100)}</b> ㎥</span>
+    <span>가스2호기 <b>${fmt(Math.round(cum.gas2*100)/100)}</b> ㎥</span>
+    <span>GHP <b>${fmt(Math.round(cum.ghp*100)/100)}</b> ㎥</span>
+    <span style="margin-left:auto;color:var(--ink3)">행을 누르면 해당 날짜의 일일 보고로 이동</span>`;
+  sheetShell(head, body, foot);
+  document.querySelectorAll("#sheetBody tbody tr").forEach(tr=>tr.onclick=()=>{ state.date=fromIso(tr.dataset.d); go("report"); });
+}
+function renderBoilerSheet(m, endCap, arr){
+  $("#dataTitle").textContent = `데이터 조회 · ${m.getFullYear()}년 ${m.getMonth()+1}월 보일러`;
+  const byDate = Object.fromEntries(arr.map(r=>[r.date,r]));
+  const head = `<thead>
+    <tr class="grp"><th></th>
+      <th colspan="3" class="g-b1">1호 보일러</th><th colspan="3" class="g-b2">2호 보일러</th>
+      <th colspan="3" class="g-b3">3호 보일러</th><th colspan="2">합계</th></tr>
+    <tr><th>날짜</th>
+      ${"<th>운전 시간대</th><th>일계</th><th>월누계</th>".repeat(3)}
+      <th>일계</th><th>월누계</th></tr></thead>`;
+  let body="<tbody>";
+  const cum={1:0,2:0,3:0,all:0}, runDays={1:0,2:0,3:0};
+  const end=endCap.getDate();
+  for(let day=1; day<=end; day++){
+    const d=new Date(m.getFullYear(), m.getMonth(), day), ds=iso(d);
+    const r=byDate[ds];
+    let cells="", dayTotal=0;
+    BOILERS.forEach(n=>{
+      const runs=(r?.["b"+n]||[]).filter(x=>x.s&&x.e);
+      const h=hoursOf(runs);
+      cum[n]+=h; cum.all+=h; dayTotal+=h;
+      if(runs.length) runDays[n]++;
+      const span=runs.length?runs.map(x=>`${x.s}~${x.e}`).join("<br>"):'<span style="color:var(--ink3)">'+(r?"미가동":"")+"</span>";
+      cells+=`<td style="text-align:center;font-size:11px;line-height:1.4">${span}</td><td>${h?h.toFixed(1):""}</td><td>${cum[n]?cum[n].toFixed(1):""}</td>`;
+    });
+    const cls=[d.getDay()===0?"sun":"", d.getDay()===6?"sat":"", ds===iso(state.date)?"sel":""].join(" ");
+    body+=`<tr class="${cls}" data-d="${ds}"><td>${m.getMonth()+1}/${day} (${"일월화수목금토"[d.getDay()]})</td>${cells}
+      <td style="font-weight:700">${dayTotal?dayTotal.toFixed(1):""}</td><td style="font-weight:700">${cum.all?cum.all.toFixed(1):""}</td></tr>`;
+  }
+  body+="</tbody>";
+  const foot = `<span>월 누계 — 1호기 <b>${cum[1].toFixed(1)}</b> h (${runDays[1]}일)</span>
+    <span>2호기 <b>${cum[2].toFixed(1)}</b> h (${runDays[2]}일)</span>
+    <span>3호기 <b>${cum[3].toFixed(1)}</b> h (${runDays[3]}일)</span>
+    <span>합계 <b>${cum.all.toFixed(1)}</b> h</span>
+    <span style="margin-left:auto;color:var(--ink3)">행을 누르면 해당 날짜의 운전일지로 이동</span>`;
+  sheetShell(head, body, foot);
+  document.querySelectorAll("#sheetBody tbody tr").forEach(tr=>tr.onclick=()=>{ state.date=fromIso(tr.dataset.d); go("boiler"); });
+}
+
+/* ═══════════════════ 6. 사용량 통계 (일별/월별/년도별) ═══════════════════ */
+const STAT_METERS = [
+  { k:"gasAll", n:"가스 합계", color:"--pipe-gas" },
+  { k:"water",  n:"상수도",   color:"--pipe-water" },
+  { k:"gas1",   n:"가스 1호기", color:"--pipe-gas" },
+  { k:"gas2",   n:"가스 2호기", color:"--pipe-gas" },
+  { k:"ghp",    n:"GHP",     color:"--pipe-gas" },
+];
+$("#statSeg").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  document.querySelectorAll("#statSeg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); state.statView=b.dataset.v; renderPage("stats");
+});
+$("#statChips").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  state.statMeter=b.dataset.k; renderPage("stats");
+});
+function statChipsHtml(){
+  return STAT_METERS.map(s=>`<button class="${state.statMeter===s.k?"on":""}" data-k="${s.k}">${s.n}</button>`).join("");
+}
+function usageOf(doc, lastM, key){
+  const get = (m,k)=> key==="gasAll" ? (["gas1","gas2","ghp"].every(g=>m?.[g]!=null) ? m.gas1+m.gas2+m.ghp : null) : m?.[key];
+  const cur=get(doc?.meters), prev=get(lastM);
+  return (cur!=null&&prev!=null) ? Math.round((cur-prev)*100)/100 : null;
+}
+function advanceLast(lastM, doc){
+  if(doc?.meters) METERS.forEach(mt=>{ if(doc.meters[mt.k]!=null) lastM[mt.k]=doc.meters[mt.k]; });
+}
+function lineChart(points, labels, colorVar, unit){
+  // points: 값 배열 (null 허용)
+  const css=getComputedStyle(document.body);
+  const color=css.getPropertyValue(colorVar).trim();
+  const W=640, H=230, padL=46, padR=12, padT=14, padB=28;
+  const vals=points.filter(v=>v!=null);
+  if(!vals.length) return `<div class="loading">표시할 데이터가 없습니다</div>`;
+  const max=Math.max(...vals), min=Math.min(0,...vals);
+  const span=(max-min)||1;
+  const x=i=>padL+(W-padL-padR)*(points.length===1?0.5:i/(points.length-1));
+  const y=v=>padT+(H-padT-padB)*(1-(v-min)/span);
+  let path="", dots="", lastPt=null;
+  points.forEach((v,i)=>{
+    if(v==null){ lastPt=null; return; }
+    path += (lastPt==null?`M${x(i).toFixed(1)},${y(v).toFixed(1)}`:`L${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+    dots += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="${color}"><title>${labels[i]} · ${fmt(v)}${unit}</title></circle>`;
+    lastPt=v;
+  });
+  const grid=[0,.5,1].map(t=>{
+    const gy=padT+(H-padT-padB)*t, gv=max-(max-min)*t;
+    return `<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="${css.getPropertyValue("--line")}" stroke-dasharray="3 3"/>
+      <text x="${padL-6}" y="${gy+3}" font-size="10" fill="${css.getPropertyValue("--ink3")}" text-anchor="end">${fmt(Math.round(gv))}</text>`;
+  }).join("");
+  const step=Math.max(1,Math.ceil(points.length/16));
+  const xlabels=labels.map((l,i)=> i%step===0 ? `<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="10" fill="${css.getPropertyValue("--ink3")}" text-anchor="middle">${l}</text>` : "").join("");
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    ${grid}
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}${xlabels}</svg>`;
+}
+function barChart(points, labels, colorVar, unit, onClickAttr){
+  const css=getComputedStyle(document.body);
+  const color=css.getPropertyValue(colorVar).trim();
+  const W=640, H=230, padL=46, padR=12, padT=14, padB=28;
+  const vals=points.filter(v=>v!=null);
+  if(!vals.length) return `<div class="loading">표시할 데이터가 없습니다</div>`;
+  const max=Math.max(...vals,1);
+  const bw=Math.min(38,(W-padL-padR)/points.length*0.62);
+  let bars="";
+  points.forEach((v,i)=>{
+    const cx=padL+(W-padL-padR)*(i+0.5)/points.length;
+    if(v!=null){
+      const h=(H-padT-padB)*v/max;
+      bars+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${(H-padB-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h,v?2:0).toFixed(1)}" rx="3" fill="${color}" ${onClickAttr?`style="cursor:pointer" ${onClickAttr}="${i}"`:""}><title>${labels[i]} · ${fmt(v)}${unit}</title></rect>`;
+    }
+    bars+=`<text x="${cx.toFixed(1)}" y="${H-8}" font-size="10" fill="${css.getPropertyValue("--ink3")}" text-anchor="middle">${labels[i]}</text>`;
+  });
+  const gy=padT, gv=max;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    <line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="${css.getPropertyValue("--line")}" stroke-dasharray="3 3"/>
+    <text x="${padL-6}" y="${gy+3}" font-size="10" fill="${css.getPropertyValue("--ink3")}" text-anchor="end">${fmt(Math.round(gv))}</text>
+    <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="${css.getPropertyValue("--line2")}"/>
+    ${bars}</svg>`;
+}
+async function renderStats(token){
+  $("#statChips").innerHTML = statChipsHtml();
+  const sm = STAT_METERS.find(s=>s.k===state.statMeter);
+  const unit=" ㎥";
+  if(state.statView==="daily"){
+    const m=state.statMonth;
+    $("#statNav").innerHTML = `<button data-a="spm">‹</button>
+      <span class="cur" style="position:relative">${m.getFullYear()}년 ${m.getMonth()+1}월
+        <input type="month" value="${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}"></span>
+      <button data-a="snm">›</button>`;
+    $("#statsBody").innerHTML = `<div class="loading">집계 중…</div>`;
+    const startS=iso(m);
+    const lastDay=new Date(m.getFullYear(),m.getMonth()+1,0);
+    const endCap=(m.getFullYear()===TODAY.getFullYear()&&m.getMonth()===TODAY.getMonth())?TODAY:lastDay;
+    const [arr, prevDoc] = await Promise.all([fetchRangeReadings(startS, iso(endCap)), fetchPrevReading(startS)]);
+    if(token!==renderToken) return;
+    const byDate=Object.fromEntries(arr.map(r=>[r.date,r]));
+    const lastM = prevDoc?.meters ? {...prevDoc.meters} : {};
+    const pts=[], labels=[];
+    let total=0, cnt=0, maxV=null, maxD="";
+    for(let day=1; day<=endCap.getDate(); day++){
+      const ds=iso(new Date(m.getFullYear(),m.getMonth(),day));
+      const r=byDate[ds];
+      const u=usageOf(r, lastM, state.statMeter);
+      pts.push(u); labels.push(String(day));
+      if(u!=null){ total+=u; cnt++; if(maxV==null||u>maxV){maxV=u; maxD=`${m.getMonth()+1}/${day}`;} }
+      advanceLast(lastM, r);
+    }
+    $("#statsBody").innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="k">${sm.n} 월 합계</div><div class="v">${fmt(Math.round(total))}${unit}</div></div>
+        <div class="kpi"><div class="k">일 평균</div><div class="v">${cnt?fmt(Math.round(total/cnt*10)/10):"—"}${unit}</div></div>
+        <div class="kpi"><div class="k">최대 사용일</div><div class="v">${maxD||"—"}</div></div>
+      </div>
+      <div class="chartbox"><h3>${m.getMonth()+1}월 일별 ${sm.n} 사용량</h3>
+        <div class="cap">1일~${endCap.getDate()}일 · 점에 마우스를 올리면 값 표시</div>
+        ${lineChart(pts, labels, sm.color, unit)}</div>`;
+  }
+  if(state.statView==="monthly"){
+    const y=state.statYear;
+    $("#statNav").innerHTML = `<button data-a="spy">‹</button><span class="cur">${y}년</span><button data-a="sny">›</button>`;
+    $("#statsBody").innerHTML = `<div class="loading">집계 중…</div>`;
+    const endS = y===TODAY.getFullYear() ? iso(TODAY) : `${y}-12-31`;
+    const [arr, prevDoc] = await Promise.all([fetchRangeReadings(`${y}-01-01`, endS), fetchPrevReading(`${y}-01-01`)]);
+    if(token!==renderToken) return;
+    const lastM = prevDoc?.meters ? {...prevDoc.meters} : {};
+    const monthly=Array(12).fill(null);
+    arr.forEach(r=>{
+      const u=usageOf(r, lastM, state.statMeter);
+      const mo=+r.date.slice(5,7)-1;
+      if(u!=null) monthly[mo]=(monthly[mo]||0)+u;
+      advanceLast(lastM, r);
+    });
+    const total=monthly.reduce((s,v)=>s+(v||0),0);
+    $("#statsBody").innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="k">${sm.n} 연 누계</div><div class="v">${fmt(Math.round(total))}${unit}</div></div>
+        <div class="kpi"><div class="k">월 평균</div><div class="v">${fmt(Math.round(total/Math.max(1,monthly.filter(v=>v!=null).length)))}${unit}</div></div>
+      </div>
+      <div class="chartbox"><h3>${y}년 월별 ${sm.n} 사용량</h3>
+        <div class="cap">막대를 누르면 해당 월 일별 통계로 이동</div>
+        <div id="mChart">${barChart(monthly.map(v=>v!=null?Math.round(v):null), monthly.map((_,i)=>i+1+"월"), sm.color, unit, "data-mo")}</div></div>`;
+    document.querySelectorAll("#mChart rect[data-mo]").forEach(r=>r.onclick=()=>{
+      state.statMonth=new Date(y,+r.dataset.mo,1); state.statView="daily";
+      document.querySelectorAll("#statSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v==="daily"));
+      renderPage("stats");
+    });
+  }
+  if(state.statView==="yearly"){
+    $("#statNav").innerHTML = "";
+    $("#statsBody").innerHTML = `<div class="loading">전체 데이터 집계 중…</div>`;
+    const q = query(collection(db, COL_R), orderBy("date"));
+    const snap = await getDocs(q);
+    if(token!==renderToken) return;
+    const arr = snap.docs.map(d=>d.data());
+    if(!arr.length){ $("#statsBody").innerHTML=`<div class="notice info">아직 저장된 데이터가 없습니다</div>`; return; }
+    const lastM={};
+    const years={};
+    arr.forEach(r=>{
+      const u=usageOf(r, lastM, state.statMeter);
+      const yy=r.date.slice(0,4);
+      if(u!=null) years[yy]=(years[yy]||0)+u;
+      advanceLast(lastM, r);
+    });
+    const ys=Object.keys(years).sort();
+    $("#statsBody").innerHTML = `
+      <div class="chartbox"><h3>년도별 ${sm.n} 사용량</h3>
+        <div class="cap">${ys[0]}년 ~ ${ys[ys.length-1]}년</div>
+        ${barChart(ys.map(y=>Math.round(years[y])), ys.map(y=>y+"년"), sm.color, unit, null)}</div>`;
+  }
+}
+
+/* ═══════════════════ 저장 버튼 ═══════════════════ */
+$("#saveBtn").onclick = async function(){
+  this.disabled=true;
+  try{
+    if(state.cur==="input") await saveInputPage();
+    else if(state.cur==="boiler") await saveBoilerPage();
+  }catch(e){
+    console.error(e);
+    toast("저장 실패 — 인터넷 연결 또는 보안 규칙을 확인하세요");
+  }
+  this.disabled=false;
+};
+</script>
+</body>
+</html>
