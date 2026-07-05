@@ -425,7 +425,7 @@ const CHEMS = [
   { k:"neut",  n:"중화제 매직풀20 (4L/통)",       s:"중화제",      u:"통", min:2  },
   { k:"ph",    n:"pH 감소제 (20L/통)",           s:"pH감소제",    u:"통", min:2  },
   { k:"clean", n:"청관제 (20L/통)",              s:"청관제",      u:"통", min:2  },
-  { k:"disin", n:"방역소독제 (20L/통)",           s:"방역소독제",   u:"통", min:2  },
+  { k:"disin", n:"청소용락스 (20L/통)",           s:"청소용락스",   u:"통", min:2  },
 ];
 const METERS = [
   { k:"water", n:"상수도",        cls:"c-water", chip:"WATER", color:"var(--pipe-water)" },
@@ -433,7 +433,7 @@ const METERS = [
   { k:"gas2",  n:"도시가스 2호기", cls:"c-gas",   chip:"GAS",   color:"var(--pipe-gas)" },
   { k:"ghp",   n:"도시가스 GHP",  cls:"c-gas",   chip:"GAS",   color:"var(--pipe-gas)" },
 ];
-const BOILERS = [1,2,3];
+const BOILERS = [1,2];
 const COL_R = "meter_readings", COL_B = "boiler_logs";
 
 /* ═══════════════════ 유틸 ═══════════════════ */
@@ -517,6 +517,31 @@ async function saveBoiler(dateStr, data){
   data.date = dateStr; data.worker = state.worker; data.updatedAt = new Date().toISOString();
   await setDoc(doc(db, COL_B, dateStr), data);
   bCache.set(dateStr, data);
+}
+/* 날씨 자동조회 — 청주 성화동, 해당일 05:00 기준 (Open-Meteo 무료 API) */
+function wxText(c){
+  if(c==null) return "";
+  if(c<=1) return "맑음"; if(c<=3) return "구름"; if(c<=48) return "안개";
+  if((c>=51&&c<=67)||(c>=80&&c<=82)) return "비";
+  if((c>=71&&c<=77)||(c>=85&&c<=86)) return "눈";
+  if(c>=95) return "뇌우"; return "";
+}
+async function fetchWeather(dateStr){
+  const d = fromIso(dateStr);
+  const ageDays = Math.round((TODAY - d) / 86400000);
+  const base = ageDays > 85
+    ? "https://archive-api.open-meteo.com/v1/archive"
+    : "https://api.open-meteo.com/v1/forecast";
+  const url = `${base}?latitude=36.615&longitude=127.466&hourly=temperature_2m,relative_humidity_2m,weather_code&timezone=Asia%2FSeoul&start_date=${dateStr}&end_date=${dateStr}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("weather http "+res.status);
+  const j = await res.json();
+  const i = 5; // 05:00
+  return {
+    t: j.hourly?.temperature_2m?.[i] ?? null,
+    h: j.hourly?.relative_humidity_2m?.[i] ?? null,
+    wx: wxText(j.hourly?.weather_code?.[i]),
+  };
 }
 async function loadWorkers(){
   const snap = await getDoc(doc(db, "config", "workers"));
@@ -764,13 +789,16 @@ async function renderInput(token){
       <div class="calc"><div><span class="k">기준</span><span class="v" style="font-size:11.5px">CL 0.4~1.0 · pH 5.8~8.6</span></div></div>
     </div></div>
     <div class="card c-elec"><div class="pipe"></div><div class="body">
-      <div class="chead">매점 · 환경<span class="chip">SUB</span></div>
+      <div class="chead">환경 · 매점<span class="chip">ENV</span></div>
       <div class="rows">
+        <div class="irow"><label>온도 (°C)</label><input class="num" id="in-tout" value="${cur?.env?.tout ?? ""}" inputmode="decimal"></div>
+        <div class="irow"><label>습도 (%)</label><input class="num" id="in-hum" value="${cur?.env?.hum ?? ""}" inputmode="decimal"></div>
+        <div class="irow"><label>날씨</label><input id="in-wx" value="${esc(cur?.env?.wx ?? "")}" placeholder="맑음 / 비 / 눈" style="text-align:right"></div>
         <div class="irow"><label>매점 전기 (kWh)</label><input class="num" id="in-selec" value="${cur?.store?.elec==null?"":fmt(cur.store.elec)}" inputmode="decimal"></div>
         <div class="irow"><label>매점 수도 (㎥)</label><input class="num" id="in-swater" value="${cur?.store?.water==null?"":fmt(cur.store.water)}" inputmode="decimal"></div>
-        <div class="irow"><label>외기온도 (°C)</label><input class="num" id="in-tout" value="${cur?.env?.tout ?? ""}" inputmode="decimal"></div>
-        <div class="irow"><label>실내온도 (°C)</label><input class="num" id="in-tin" value="${cur?.env?.tin ?? ""}" inputmode="decimal"></div>
       </div>
+      <div class="calc"><div><span class="k">날씨 자동조회</span><span class="v" id="wxState" style="font-size:11.5px">성화동 05:00 기준</span></div>
+        <div><button class="btn btn-line btn-sm" id="wxBtn" type="button">☁ 불러오기</button></div></div>
     </div></div>
     <div class="card c-chem"><div class="pipe"></div><div class="body">
       <div class="chead">약품 사용 · 입고<span class="chip">CHEM</span></div>
@@ -787,6 +815,20 @@ async function renderInput(token){
     b.classList.toggle("sel");
     $("#dutyCount").textContent = dutySel.size+"명 선택";
   });
+  const applyWx = async (force)=>{
+    const empty = !$("#in-tout").value && !$("#in-hum").value && !$("#in-wx").value;
+    if(!force && !empty) return;
+    try{
+      $("#wxState").textContent = "불러오는 중…";
+      const w = await fetchWeather(ds);
+      if(w.t!=null && (force || !$("#in-tout").value)) $("#in-tout").value = w.t;
+      if(w.h!=null && (force || !$("#in-hum").value)) $("#in-hum").value = w.h;
+      if(w.wx && (force || !$("#in-wx").value)) $("#in-wx").value = w.wx;
+      $("#wxState").textContent = `성화동 05:00 · ${w.wx||"—"} ${w.t??"—"}°C ${w.h??"—"}%`;
+    }catch(e){ console.error(e); $("#wxState").textContent = "조회 실패 — 직접 입력하세요"; }
+  };
+  $("#wxBtn").onclick = ()=>applyWx(true);
+  applyWx(false);
   METERS.forEach(m=>{
     const upd = ()=>{
       const v=pnum($("#in-"+m.k).value), p=pv(m.k);
@@ -808,7 +850,7 @@ async function saveInputPage(){
     meters,
     pool: { temp:pnum($("#in-ptemp").value), cl:pnum($("#in-pcl").value), ph:pnum($("#in-pph").value) },
     store:{ elec:pnum($("#in-selec").value), water:pnum($("#in-swater").value) },
-    env:  { tout:pnum($("#in-tout").value), tin:pnum($("#in-tin").value) },
+    env:  { tout:pnum($("#in-tout").value), hum:pnum($("#in-hum").value), wx:$("#in-wx").value.trim() },
     chem: { use:chemUse, in:chemIn, stock },
     dutyWorkers: [...dutySel],
   };
@@ -846,7 +888,7 @@ async function renderReport(token){
   $("#reportBody").innerHTML = `<div class="report">
     <h2>가경국민체육센터 일일 검침 데이터</h2>
     <div class="meta"><span>${kdate(d)}</span><span>근무자 : ${esc(duty)}</span>
-      ${cur?.env?.tout!=null?`<span>외기 ${cur.env.tout}°C · 실내 ${cur.env.tin??"—"}°C</span>`:""}</div>
+      ${cur?.env?.tout!=null||cur?.env?.wx?`<span>${esc(cur.env.wx||"")} ${cur.env.tout!=null?"· 외기 "+cur.env.tout+"°C":""} ${cur.env.hum!=null?"· 습도 "+cur.env.hum+"%":""}</span>`:""}</div>
     <table>
       <tr><th style="width:30%">구분</th><th>검침량(㎥)</th><th>일사용량(㎥)</th></tr>
       ${METERS.map(mRow).join("")}
@@ -912,7 +954,20 @@ async function renderBoiler(token){
       st.className="st "+(day?"st-run":"st-off");
     });
   };
-  document.querySelectorAll("#boilerBody input").forEach(inp=>inp.addEventListener("input", updCalc));
+  document.querySelectorAll("#boilerBody input").forEach(inp=>{
+    if(inp.placeholder==="HH:MM"){
+      inp.addEventListener("input", e=>{
+        if(e.inputType!=="deleteContentBackward"){
+          let v = inp.value.replace(/[^\d]/g,"");
+          if(v.length>=3) inp.value = v.slice(0,2)+":"+v.slice(2,4);
+          else if(v.length===2 && !inp.value.includes(":")) inp.value = v+":";
+        }
+        updCalc();
+      });
+    } else {
+      inp.addEventListener("input", updCalc);
+    }
+  });
   updCalc();
 }
 async function saveBoilerPage(){
@@ -1052,13 +1107,12 @@ function renderBoilerSheet(m, endCap, arr){
   const byDate = Object.fromEntries(arr.map(r=>[r.date,r]));
   const head = `<thead>
     <tr class="grp"><th></th>
-      <th colspan="3" class="g-b1">1호 보일러</th><th colspan="3" class="g-b2">2호 보일러</th>
-      <th colspan="3" class="g-b3">3호 보일러</th><th colspan="2">합계</th></tr>
+      ${BOILERS.map(n=>`<th colspan="3" class="g-b${n}">${n}호 보일러</th>`).join("")}<th colspan="2">합계</th></tr>
     <tr><th>날짜</th>
-      ${"<th>운전 시간대</th><th>일계</th><th>월누계</th>".repeat(3)}
+      ${"<th>운전 시간대</th><th>일계</th><th>월누계</th>".repeat(BOILERS.length)}
       <th>일계</th><th>월누계</th></tr></thead>`;
   let body="<tbody>";
-  const cum={1:0,2:0,3:0,all:0}, runDays={1:0,2:0,3:0};
+  const cum={1:0,2:0,3:0,all:0}, runDays={1:0,2:0,3:0}; // 3호기 키는 하위호환용
   const end=endCap.getDate();
   for(let day=1; day<=end; day++){
     const d=new Date(m.getFullYear(), m.getMonth(), day), ds=iso(d);
@@ -1077,10 +1131,8 @@ function renderBoilerSheet(m, endCap, arr){
       <td style="font-weight:700">${dayTotal?dayTotal.toFixed(1):""}</td><td style="font-weight:700">${cum.all?cum.all.toFixed(1):""}</td></tr>`;
   }
   body+="</tbody>";
-  const foot = `<span>월 누계 — 1호기 <b>${cum[1].toFixed(1)}</b> h (${runDays[1]}일)</span>
-    <span>2호기 <b>${cum[2].toFixed(1)}</b> h (${runDays[2]}일)</span>
-    <span>3호기 <b>${cum[3].toFixed(1)}</b> h (${runDays[3]}일)</span>
-    <span>합계 <b>${cum.all.toFixed(1)}</b> h</span>
+  const foot = BOILERS.map(n=>`<span>${n===BOILERS[0]?"월 누계 — ":""}${n}호기 <b>${cum[n].toFixed(1)}</b> h (${runDays[n]}일)</span>`).join("") +
+    `<span>합계 <b>${cum.all.toFixed(1)}</b> h</span>
     <span style="margin-left:auto;color:var(--ink3)">행을 누르면 해당 날짜의 운전일지로 이동</span>`;
   sheetShell(head, body, foot);
   document.querySelectorAll("#sheetBody tbody tr").forEach(tr=>tr.onclick=()=>{ state.date=fromIso(tr.dataset.d); go("boiler"); });
@@ -1137,8 +1189,7 @@ function lineChart(points, labels, colorVar, unit){
     return `<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="${css.getPropertyValue("--line")}" stroke-dasharray="3 3"/>
       <text x="${padL-6}" y="${gy+3}" font-size="10" fill="${css.getPropertyValue("--ink3")}" text-anchor="end">${fmt(Math.round(gv))}</text>`;
   }).join("");
-  const step=Math.max(1,Math.ceil(points.length/16));
-  const xlabels=labels.map((l,i)=> i%step===0 ? `<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="10" fill="${css.getPropertyValue("--ink3")}" text-anchor="middle">${l}</text>` : "").join("");
+  const xlabels=labels.map((l,i)=> `<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="9" fill="${css.getPropertyValue("--ink3")}" text-anchor="middle">${l}</text>`).join("");
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
     ${grid}
     <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1259,6 +1310,26 @@ async function renderStats(token){
         ${barChart(ys.map(y=>Math.round(years[y])), ys.map(y=>y+"년"), sm.color, unit, null)}</div>`;
   }
 }
+
+/* ═══════════════════ 엔터로 다음 입력칸 이동 ═══════════════════ */
+document.addEventListener("keydown", e=>{
+  if(e.key!=="Enter") return;
+  const t = e.target;
+  if(t.tagName!=="INPUT" || t.type==="date" || t.type==="month" || t.id==="pin") return;
+  const page = t.closest(".page"); if(!page) return;
+  e.preventDefault();
+  const inputs = [...page.querySelectorAll("input:not([type=date]):not([type=month])")]
+    .filter(i=>!i.disabled && i.offsetParent!==null);
+  const idx = inputs.indexOf(t);
+  if(idx > -1 && idx < inputs.length-1){
+    inputs[idx+1].focus();
+    inputs[idx+1].select?.();
+  } else {
+    t.blur();
+    const sb = $("#saveBtn");
+    if(sb && $("#savebar").style.display!=="none") sb.focus();
+  }
+});
 
 /* ═══════════════════ 저장 버튼 ═══════════════════ */
 $("#saveBtn").onclick = async function(){
