@@ -93,7 +93,7 @@ nav button.dropR{box-shadow:3px 0 0 var(--pipe-water)}
 .tgl.active{background:var(--accent); color:var(--bg); border-color:var(--accent)}
 
 /* ── 레이아웃 ── */
-main{max-width:1440px; margin:0 auto; padding:22px 24px 90px}
+main{max-width:1600px; margin:0 auto; padding:22px 24px 90px}
 .page{display:none}
 .page.on{display:block; animation:fade .18s ease}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -216,7 +216,7 @@ td.l{text-align:left; font-weight:600}
 .seg button{border:0; background:none; color:var(--ink2); font:inherit; font-size:12.5px; font-weight:700; padding:6px 14px; border-radius:7px; cursor:pointer}
 .seg button.on{background:var(--accent); color:var(--bg)}
 .sheetwrap{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:74vh}
-.sheet{border-collapse:separate; border-spacing:0; font-size:12px; min-width:1180px; width:100%}
+.sheet{border-collapse:separate; border-spacing:0; font-size:12px; min-width:1480px; width:100%}
 .sheet th,.sheet td{border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:6px 9px; white-space:nowrap}
 .sheet thead th{position:sticky; top:0; z-index:3; background:var(--surface2); font-size:11px}
 .sheet thead tr.grp th{z-index:4; font-size:11.5px; font-weight:800; border-bottom:2px solid var(--line2)}
@@ -229,6 +229,10 @@ td.l{text-align:left; font-weight:600}
 .sheet tr.sel td{background:var(--pipe-water-bg)!important}
 .sheet .sun td:first-child{color:var(--danger)}
 .sheet .sat td:first-child{color:var(--pipe-water)}
+.sheet tr.closed td{background:color-mix(in srgb, var(--pipe-gas) 10%, var(--surface))!important}
+.sheet tr.closed td:first-child{color:var(--pipe-gas); font-style:italic}
+.sheet tr.closed td:first-child::after{content:" 미운영"; font-size:10px; font-weight:500}
+.blr-off{color:var(--danger); font-weight:700}
 .g-water{box-shadow:inset 0 3px 0 var(--pipe-water)}
 .g-gas{box-shadow:inset 0 3px 0 var(--pipe-gas)}
 .g-pool{box-shadow:inset 0 3px 0 var(--pipe-steam)}
@@ -360,9 +364,13 @@ td.l{text-align:left; font-weight:600}
       <div class="sub">한 달 전체를 한눈에 — 행을 누르면 해당 날짜로 이동합니다</div></div>
     <div class="datebar" data-nav="month"></div>
   </div>
-  <div class="seg" id="dataSeg">
-    <button class="on" data-v="meter">검침 데이터</button>
-    <button data-v="boiler">보일러 운전</button>
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px">
+    <div class="seg" style="margin:0" id="dataSeg">
+      <button class="on" data-v="meter">검침 데이터</button>
+      <button data-v="boiler">보일러 운전</button>
+    </div>
+    <button class="btn btn-line btn-sm" id="xlsMonth">⬇ 이 달 엑셀</button>
+    <button class="btn btn-line btn-sm" id="xlsAll">⬇ 전체 엑셀</button>
   </div>
   <div id="sheetBody"><div class="loading">불러오는 중…</div></div>
 </section>
@@ -392,6 +400,7 @@ td.l{text-align:left; font-weight:600}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 /* ═══════════════════ Firebase ═══════════════════ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -751,7 +760,9 @@ async function renderInput(token){
   $("#saveHint").textContent = cur
     ? `마지막 저장 · ${cur.updatedAt ? cur.updatedAt.slice(5,16).replace("T"," ") : ""} (${cur.worker||""})`
     : "아직 저장된 기록이 없습니다";
-  const noticeHtml = !isToday ? `<div class="notice">지난 날짜의 기록입니다 — 수정 후 저장하면 이 날짜 기준으로 다시 계산됩니다</div>` : "";
+  const noticeHtml = cur?.closed
+    ? `<div class="notice" style="background:var(--pipe-elec-bg);color:var(--pipe-elec);border-color:color-mix(in srgb, var(--pipe-elec) 30%, transparent)">이 날짜는 <b>미운영</b>으로 자동 생성된 기록입니다 — 수정 후 저장하면 일반 운영일로 전환됩니다</div>`
+    : !isToday ? `<div class="notice">지난 날짜의 기록입니다 — 수정 후 저장하면 이 날짜 기준으로 다시 계산됩니다</div>` : "";
   const mv = k => cur?.meters?.[k] ?? "";
   const pv = k => prev?.meters?.[k];
   const dutyChips = WORKERS.map(w=>
@@ -782,9 +793,19 @@ async function renderInput(token){
     <div class="card c-water"><div class="pipe"></div><div class="body">
       <div class="chead">수영장 수질<span class="chip">POOL</span></div>
       <div class="rows">
-        <div class="irow"><label>수온 (°C)</label><input class="num" id="in-ptemp" value="${cur?.pool?.temp ?? ""}" inputmode="decimal"></div>
-        <div class="irow"><label>염소 CL (ppm)</label><input class="num" id="in-pcl" value="${cur?.pool?.cl ?? ""}" inputmode="decimal"></div>
-        <div class="irow"><label>pH</label><input class="num" id="in-pph" value="${cur?.pool?.ph ?? ""}" inputmode="decimal"></div>
+        <div class="irow" style="grid-template-columns:1fr 86px 86px 86px"><label></label><span class="colhead">05:00</span><span class="colhead">12:00</span><span class="colhead">17~22시</span></div>
+        <div class="irow" style="grid-template-columns:1fr 86px 86px 86px"><label>수온 (°C)</label>
+          <input class="num" id="in-pt1" value="${cur?.pool?.t1?.temp ?? cur?.pool?.temp ?? ""}" inputmode="decimal">
+          <input class="num" id="in-pt2" value="${cur?.pool?.t2?.temp ?? ""}" inputmode="decimal">
+          <input class="num" id="in-pt3" value="${cur?.pool?.t3?.temp ?? ""}" inputmode="decimal"></div>
+        <div class="irow" style="grid-template-columns:1fr 86px 86px 86px"><label>염소 CL (ppm)</label>
+          <input class="num" id="in-pc1" value="${cur?.pool?.t1?.cl ?? cur?.pool?.cl ?? ""}" inputmode="decimal">
+          <input class="num" id="in-pc2" value="${cur?.pool?.t2?.cl ?? ""}" inputmode="decimal">
+          <input class="num" id="in-pc3" value="${cur?.pool?.t3?.cl ?? ""}" inputmode="decimal"></div>
+        <div class="irow" style="grid-template-columns:1fr 86px 86px 86px"><label>pH</label>
+          <input class="num" id="in-pp1" value="${cur?.pool?.t1?.ph ?? cur?.pool?.ph ?? ""}" inputmode="decimal">
+          <input class="num" id="in-pp2" value="${cur?.pool?.t2?.ph ?? ""}" inputmode="decimal">
+          <input class="num" id="in-pp3" value="${cur?.pool?.t3?.ph ?? ""}" inputmode="decimal"></div>
       </div>
       <div class="calc"><div><span class="k">기준</span><span class="v" style="font-size:11.5px">CL 0.4~1.0 · pH 5.8~8.6</span></div></div>
     </div></div>
@@ -848,12 +869,49 @@ async function saveInputPage(){
   const stock = baseStock.map((s,i)=>Math.round(((s||0)+chemIn[i]-chemUse[i])*100)/100);
   const data = {
     meters,
-    pool: { temp:pnum($("#in-ptemp").value), cl:pnum($("#in-pcl").value), ph:pnum($("#in-pph").value) },
+    pool: {
+      t1: { temp:pnum($("#in-pt1").value), cl:pnum($("#in-pc1").value), ph:pnum($("#in-pp1").value) },
+      t2: { temp:pnum($("#in-pt2").value), cl:pnum($("#in-pc2").value), ph:pnum($("#in-pp2").value) },
+      t3: { temp:pnum($("#in-pt3").value), cl:pnum($("#in-pc3").value), ph:pnum($("#in-pp3").value) },
+    },
     store:{ elec:pnum($("#in-selec").value), water:pnum($("#in-swater").value) },
     env:  { tout:pnum($("#in-tout").value), hum:pnum($("#in-hum").value), wx:$("#in-wx").value.trim() },
     chem: { use:chemUse, in:chemIn, stock },
     dutyWorkers: [...dutySel],
   };
+
+  /* 빈 날짜 자동 채움 (미운영) — 전일 기록 이후 ~ 오늘 사이 빠진 날에 전일값 복사 */
+  if(inputPrev && inputPrev.date){
+    const prevDate = fromIso(inputPrev.date);
+    const curDate = fromIso(ds);
+    const gapDays = Math.round((curDate - prevDate) / 86400000) - 1;
+    if(gapDays > 0 && gapDays <= 14){  // 최대 14일까지 자동 채움 (그 이상이면 의도적 공백일 수 있음)
+      const filled = [];
+      for(let g=1; g<=gapDays; g++){
+        const gapDate = new Date(prevDate);
+        gapDate.setDate(gapDate.getDate() + g);
+        const gapDs = iso(gapDate);
+        const already = await fetchReading(gapDs);
+        if(already) continue; // 이미 기록이 있으면 건너뜀
+        const gapData = {
+          meters: {...inputPrev.meters},  // 전일 검침값 그대로 (사용량 = 0)
+          pool: {},                       // 수질 측정 안 함
+          store: {},                      // 매점 미운영
+          env: {},
+          chem: { use: [], in: [], stock: padArr(inputPrev.chem?.stock||[]) },  // 약품 사용·입고 없음, 재고만 이월
+          dutyWorkers: [],
+          closed: true,
+        };
+        await saveReading(gapDs, gapData);
+        filled.push(gapDs.slice(5).replace("-","/"));
+      }
+      if(filled.length){
+        toast(`미운영 ${filled.length}일 자동 생성 (${filled.join(", ")})`);
+        await new Promise(r=>setTimeout(r, 1500)); // 토스트 읽을 시간
+      }
+    }
+  }
+
   await saveReading(ds, data);
   toast("검침이 저장되었습니다");
   renderPage("input");
@@ -868,6 +926,12 @@ async function renderReport(token){
   if(token!==renderToken) return;
   if(!cur && !blr){
     $("#reportBody").innerHTML = `<div class="notice info">이 날짜에 저장된 기록이 없습니다 — 「오늘 검침」에서 먼저 입력하세요</div>`;
+    return;
+  }
+  if(cur?.closed){
+    $("#reportBody").innerHTML = `<div class="report"><h2>미운영</h2>
+      <div class="meta"><span>${kdate(d)}</span></div>
+      <div class="notice" style="text-align:center;margin:20px 0">이 날은 미운영일로, 전일 검침값이 그대로 유지됩니다.<br>사용량 0 · 약품 재고 변동 없음</div></div>`;
     return;
   }
   const usage = k => (cur?.meters?.[k]!=null && prev?.meters?.[k]!=null) ? Math.round((cur.meters[k]-prev.meters[k])*100)/100 : null;
@@ -895,9 +959,11 @@ async function renderReport(token){
     </table>
     <div style="height:12px"></div>
     <div class="grid g2">
-      <table><tr><th colspan="3">수영장 수질</th></tr>
-        <tr><th>수온(°C)</th><th>CL(ppm)</th><th>pH</th></tr>
-        <tr><td class="n">${pool.temp??"—"}</td><td class="n">${pool.cl??"—"}</td><td class="n">${pool.ph??"—"}</td></tr></table>
+      <table><tr><th colspan="4">수영장 수질</th></tr>
+        <tr><th></th><th>05:00</th><th>12:00</th><th>17~22시</th></tr>
+        <tr><th>수온(°C)</th><td class="n">${pool.t1?.temp??pool.temp??"—"}</td><td class="n">${pool.t2?.temp??"—"}</td><td class="n">${pool.t3?.temp??"—"}</td></tr>
+        <tr><th>CL(ppm)</th><td class="n">${pool.t1?.cl??pool.cl??"—"}</td><td class="n">${pool.t2?.cl??"—"}</td><td class="n">${pool.t3?.cl??"—"}</td></tr>
+        <tr><th>pH</th><td class="n">${pool.t1?.ph??pool.ph??"—"}</td><td class="n">${pool.t2?.ph??"—"}</td><td class="n">${pool.t3?.ph??"—"}</td></tr></table>
       <table><tr><th colspan="2">보일러 운전</th></tr>
         ${BOILERS.map(n=>`<tr><th style="width:70px">${n}호기</th><td class="n">${bLine(n)}</td></tr>`).join("")}</table>
     </div>
@@ -1067,10 +1133,12 @@ function renderMeterSheet(m, endCap, arr, prevDoc){
     <tr class="grp"><th></th>
       <th colspan="3" class="g-water">상수도</th><th colspan="3" class="g-gas">도시가스 1호기</th>
       <th colspan="3" class="g-gas">도시가스 2호기</th><th colspan="3" class="g-gas">GHP</th>
-      <th colspan="3" class="g-pool">수영장 수질</th><th colspan="${CHEMS.length}" class="g-chem">약품 사용</th></tr>
+      <th colspan="9" class="g-pool">수영장 수질</th><th colspan="${CHEMS.length}" class="g-chem">약품 사용</th></tr>
     <tr><th>날짜</th>
       ${"<th>검침</th><th>사용</th><th>누적</th>".repeat(4)}
-      <th>수온</th><th>CL</th><th>pH</th>
+      <th>05시<br>수온</th><th>05시<br>CL</th><th>05시<br>pH</th>
+      <th>12시<br>수온</th><th>12시<br>CL</th><th>12시<br>pH</th>
+      <th>17시<br>수온</th><th>17시<br>CL</th><th>17시<br>pH</th>
       ${chemHead}</tr></thead>`;
   let body="<tbody>";
   const cum={water:0,gas1:0,gas2:0,ghp:0};
@@ -1079,7 +1147,7 @@ function renderMeterSheet(m, endCap, arr, prevDoc){
   for(let day=1; day<=end; day++){
     const d=new Date(m.getFullYear(), m.getMonth(), day), ds=iso(d);
     const r=byDate[ds];
-    const cls=[d.getDay()===0?"sun":"", d.getDay()===6?"sat":"", ds===iso(state.date)?"sel":""].join(" ");
+    const cls=[d.getDay()===0?"sun":"", d.getDay()===6?"sat":"", ds===iso(state.date)?"sel":"",r?.closed?"closed":""].join(" ");
     let cells="";
     METERS.forEach(mt=>{
       const cur=r?.meters?.[mt.k], prev=lastMeters[mt.k];
@@ -1088,7 +1156,9 @@ function renderMeterSheet(m, endCap, arr, prevDoc){
       cells+=`<td>${fmt(cur)==="—"?"":fmt(cur)}</td><td>${use==null?"":fmt(use)}</td><td>${cum[mt.k]?fmt(Math.round(cum[mt.k]*100)/100):""}</td>`;
     });
     if(r?.meters) METERS.forEach(mt=>{ if(r.meters[mt.k]!=null) lastMeters[mt.k]=r.meters[mt.k]; });
-    cells+=`<td>${r?.pool?.temp??""}</td><td>${r?.pool?.cl??""}</td><td>${r?.pool?.ph??""}</td>`;
+    cells+=`<td>${r?.pool?.t1?.temp??r?.pool?.temp??""}</td><td>${r?.pool?.t1?.cl??r?.pool?.cl??""}</td><td>${r?.pool?.t1?.ph??r?.pool?.ph??""}</td>`;
+    cells+=`<td>${r?.pool?.t2?.temp??""}</td><td>${r?.pool?.t2?.cl??""}</td><td>${r?.pool?.t2?.ph??""}</td>`;
+    cells+=`<td>${r?.pool?.t3?.temp??""}</td><td>${r?.pool?.t3?.cl??""}</td><td>${r?.pool?.t3?.ph??""}</td>`;
     const uArr = r ? padArr(r.chem?.use||[]) : [];
     for(let i=0;i<CHEMS.length;i++) cells+=`<td>${r&&uArr[i]?uArr[i]:""}</td>`;
     body+=`<tr class="${cls}" data-d="${ds}"><td>${m.getMonth()+1}/${day} (${"일월화수목금토"[d.getDay()]})</td>${cells}</tr>`;
@@ -1123,10 +1193,10 @@ function renderBoilerSheet(m, endCap, arr){
       const h=hoursOf(runs);
       cum[n]+=h; cum.all+=h; dayTotal+=h;
       if(runs.length) runDays[n]++;
-      const span=runs.length?runs.map(x=>`${x.s}~${x.e}`).join("<br>"):'<span style="color:var(--ink3)">'+(r?"미가동":"")+"</span>";
+      const span=runs.length?runs.map(x=>`${x.s}~${x.e}`).join("<br>"):'<span class="blr-off">미가동</span>';
       cells+=`<td style="text-align:center;font-size:11px;line-height:1.4">${span}</td><td>${h?h.toFixed(1):""}</td><td>${cum[n]?cum[n].toFixed(1):""}</td>`;
     });
-    const cls=[d.getDay()===0?"sun":"", d.getDay()===6?"sat":"", ds===iso(state.date)?"sel":""].join(" ");
+    const cls=[d.getDay()===0?"sun":"", d.getDay()===6?"sat":"", ds===iso(state.date)?"sel":"",r?.closed?"closed":""].join(" ");
     body+=`<tr class="${cls}" data-d="${ds}"><td>${m.getMonth()+1}/${day} (${"일월화수목금토"[d.getDay()]})</td>${cells}
       <td style="font-weight:700">${dayTotal?dayTotal.toFixed(1):""}</td><td style="font-weight:700">${cum.all?cum.all.toFixed(1):""}</td></tr>`;
   }
@@ -1310,6 +1380,91 @@ async function renderStats(token){
         ${barChart(ys.map(y=>Math.round(years[y])), ys.map(y=>y+"년"), sm.color, unit, null)}</div>`;
   }
 }
+
+/* ═══════════════════ 엑셀 다운로드 ═══════════════════ */
+async function exportExcel(scope){
+  toast("엑셀 생성 중…");
+  try{
+    let startS, endS, fname;
+    if(scope==="month"){
+      const m=state.month;
+      startS=iso(m);
+      const lastDay=new Date(m.getFullYear(),m.getMonth()+1,0);
+      endS=iso((m.getFullYear()===TODAY.getFullYear()&&m.getMonth()===TODAY.getMonth())?TODAY:lastDay);
+      fname=`기계실검침_${m.getFullYear()}-${String(m.getMonth()+1).padStart(2,"0")}.xlsx`;
+    } else {
+      startS="2000-01-01"; endS=iso(TODAY);
+      fname="기계실검침_전체.xlsx";
+    }
+    const [readings, boilers, prevDoc] = await Promise.all([
+      fetchRangeReadings(startS, endS),
+      fetchRangeBoilers(startS, endS),
+      fetchPrevReading(startS)
+    ]);
+    if(!readings.length && !boilers.length) return toast("내려받을 데이터가 없습니다");
+
+    /* 시트 1: 검침 */
+    const h1=["날짜","요일",
+      "상수도 검침","상수도 사용","가스1호기 검침","가스1호기 사용",
+      "가스2호기 검침","가스2호기 사용","GHP 검침","GHP 사용",
+      "05시 수온","05시 CL","05시 pH","12시 수온","12시 CL","12시 pH","17시 수온","17시 CL","17시 pH",
+      "온도(°C)","습도(%)","날씨",
+      "매점 전기(kWh)","매점 수도(㎥)",
+      ...CHEMS.map(c=>c.s+" 사용"), ...CHEMS.map(c=>c.s+" 입고"), ...CHEMS.map(c=>c.s+" 재고"),
+      "근무자"];
+    const rows1=[h1];
+    const lastM = prevDoc?.meters ? {...prevDoc.meters} : {};
+    readings.forEach(r=>{
+      const d=fromIso(r.date);
+      const use=k=>{
+        const cur=r.meters?.[k], prev=lastM[k];
+        return (cur!=null&&prev!=null)?Math.round((cur-prev)*100)/100:null;
+      };
+      const row=[r.date, "일월화수목금토"[d.getDay()],
+        r.meters?.water??null, use("water"), r.meters?.gas1??null, use("gas1"),
+        r.meters?.gas2??null, use("gas2"), r.meters?.ghp??null, use("ghp"),
+        r.pool?.t1?.temp??r.pool?.temp??null, r.pool?.t1?.cl??r.pool?.cl??null, r.pool?.t1?.ph??r.pool?.ph??null,
+        r.pool?.t2?.temp??null, r.pool?.t2?.cl??null, r.pool?.t2?.ph??null,
+        r.pool?.t3?.temp??null, r.pool?.t3?.cl??null, r.pool?.t3?.ph??null,
+        r.env?.tout??null, r.env?.hum??null, r.env?.wx??"",
+        r.store?.elec??null, r.store?.water??null,
+        ...padArr(r.chem?.use||[]), ...padArr(r.chem?.in||[]), ...padArr(r.chem?.stock||[]).map(v=>v==null?null:v),
+        (r.dutyWorkers||[]).join(", ")||r.worker||""];
+      rows1.push(row);
+      advanceLast(lastM, r);
+    });
+
+    /* 시트 2: 보일러 */
+    const h2=["날짜","요일"];
+    BOILERS.forEach(n=>h2.push(`${n}호기 운전시간대`,`${n}호기 일계(h)`));
+    h2.push("합계(h)","근무자");
+    const rows2=[h2];
+    boilers.forEach(b=>{
+      const d=fromIso(b.date);
+      const row=[b.date, "일월화수목금토"[d.getDay()]];
+      let total=0;
+      BOILERS.forEach(n=>{
+        const runs=(b["b"+n]||[]).filter(x=>x.s&&x.e);
+        const h=hoursOf(runs); total+=h;
+        row.push(runs.map(x=>`${x.s}~${x.e}`).join(", "), h?Math.round(h*10)/10:null);
+      });
+      row.push(total?Math.round(total*10)/10:null, b.worker||"");
+      rows2.push(row);
+    });
+
+    const wb=XLSX.utils.book_new();
+    const ws1=XLSX.utils.aoa_to_sheet(rows1);
+    ws1["!cols"]=h1.map((h,i)=>({wch: i===0?11 : Math.max(9, String(h).length+2)}));
+    XLSX.utils.book_append_sheet(wb, ws1, "검침 데이터");
+    const ws2=XLSX.utils.aoa_to_sheet(rows2);
+    ws2["!cols"]=h2.map((h,i)=>({wch: i===0?11 : h.includes("시간대")?26 : Math.max(9,String(h).length+2)}));
+    XLSX.utils.book_append_sheet(wb, ws2, "보일러 운전일지");
+    XLSX.writeFile(wb, fname);
+    toast(`${fname} 다운로드 완료`);
+  }catch(e){ console.error(e); toast("엑셀 생성 실패 — 다시 시도하세요"); }
+}
+$("#xlsMonth").onclick=()=>exportExcel("month");
+$("#xlsAll").onclick=()=>exportExcel("all");
 
 /* ═══════════════════ 엔터로 다음 입력칸 이동 ═══════════════════ */
 document.addEventListener("keydown", e=>{
